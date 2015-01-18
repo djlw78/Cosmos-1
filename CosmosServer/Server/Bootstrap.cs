@@ -537,8 +537,9 @@ namespace Cosmos.Server
                     StartSend(e, wt.NextBufferSizeToSend);
                 }
                 else
-                {
-                    FinishSend(e);
+                {                    
+                    wt.Initialize();
+                    Debug.WriteLine("FinishSend", "[DEBUG]");
                 }
             }
         }
@@ -556,18 +557,6 @@ namespace Cosmos.Server
             {
                 ProcessSend(e);
             }
-        }
-
-        /// <summary>
-        /// 보내기 완료 동작
-        /// WriteToken을 초기화 하고 AcceptSocket을 해제 한 후 Pool에 반환한다.
-        /// </summary>
-        /// <param name="e"></param>
-        private void FinishSend(SocketAsyncEventArgs e)
-        {
-            Debug.WriteLine("FinishSend", "[DEBUG]");
-            WriteToken wt = (WriteToken)e.UserToken;
-            wt.Initialize();
         }
 
         /// <summary>

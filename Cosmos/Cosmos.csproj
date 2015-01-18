@@ -34,6 +34,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Atomic\AtomicBoolean.cs" />
     <Compile Include="Buffer\BufferManager.cs" />
     <Compile Include="Codec\ClassMessageSerializer.cs" />
     <Compile Include="Codec\IMessageSerializer.cs" />
