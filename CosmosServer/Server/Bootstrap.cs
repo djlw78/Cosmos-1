@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
+using CosmosServer.Token;
 
 namespace Cosmos.Server
 {
@@ -116,7 +117,7 @@ namespace Cosmos.Server
                 SocketAsyncEventArgs saeaWrite = new SocketAsyncEventArgs();
                 _writeBufferManager.SetBuffer(saeaWrite);
                 saeaWrite.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-                saeaWrite.UserToken = new WriteToken(saeaWrite, _setting.SendBufferSize);
+                saeaWrite.UserToken = new ConcurrentWriteToken(saeaWrite, _setting.SendBufferSize);
                 _poolWriteEventArgs.Push(saeaWrite);
 
             }
@@ -292,10 +293,10 @@ namespace Cosmos.Server
                     _poolWriteEventArgs.Push(writeSaea);     
                 }                           
             }
-            else if (e.UserToken is WriteToken)
+            else if (e.UserToken is ConcurrentWriteToken)
             {
                 Trace.WriteLine("Returning Write SAEA to pool", "[INFO]");
-                WriteToken wt = (WriteToken)e.UserToken;
+                ConcurrentWriteToken wt = (ConcurrentWriteToken)e.UserToken;
                 e.AcceptSocket = null;
                 _poolWriteEventArgs.Push(e);
             }
@@ -494,7 +495,7 @@ namespace Cosmos.Server
         private void StartSend(SocketAsyncEventArgs e, int bytesToSend)
         {
             Debug.WriteLine("StartSend-BytesToSend:" + bytesToSend, "[DEBUG]");
-            WriteToken wt = (WriteToken)e.UserToken;
+            ConcurrentWriteToken wt = (ConcurrentWriteToken)e.UserToken;
 
             System.Buffer.BlockCopy(wt.BytesToSend, 0, e.Buffer, wt.BufferOffset, bytesToSend); //TODO Exception Handling
             e.SetBuffer(wt.BufferOffset, bytesToSend);
@@ -509,7 +510,7 @@ namespace Cosmos.Server
         private void ProcessSend(SocketAsyncEventArgs e)
         {
             Debug.WriteLine("ProcessSend","[DEBUG]");
-            WriteToken wt = (WriteToken)e.UserToken;
+            ConcurrentWriteToken wt = (ConcurrentWriteToken)e.UserToken;
 
             if (e.SocketError != SocketError.Success)
             {
@@ -547,7 +548,7 @@ namespace Cosmos.Server
         private void ContinueSend(SocketAsyncEventArgs e, int nextBufferSizeToSend)
         {
             Debug.WriteLine("ContinueSend-nextBufferSizeToSend:" + nextBufferSizeToSend, "[DEBUG]");
-            WriteToken wt = (WriteToken)e.UserToken;
+            ConcurrentWriteToken wt = (ConcurrentWriteToken)e.UserToken;
 
             System.Buffer.BlockCopy(wt.BytesToSend, wt.TotalCurrentBytesSent, e.Buffer, wt.BufferOffset, nextBufferSizeToSend);
             e.SetBuffer(wt.BufferOffset, nextBufferSizeToSend);
@@ -568,7 +569,7 @@ namespace Cosmos.Server
         private void OnWrite(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message)
         {
             Debug.WriteLine("OnWrite:HandlerId:" + handlerId +", Payload:" + message,"[DEBUG]");
-            WriteToken wt = (WriteToken)saeaWrite.UserToken;
+            ConcurrentWriteToken wt = (ConcurrentWriteToken)saeaWrite.UserToken;
 
             bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
             if (canStartNow)

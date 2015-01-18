@@ -43,6 +43,7 @@
     <Compile Include="Server\Bootstrap.cs" />
     <Compile Include="Server\Session.cs" />
     <Compile Include="Server\Setting.cs" />
+    <Compile Include="Token\ConcurrentWriteToken.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Cosmos\Cosmos.csproj">

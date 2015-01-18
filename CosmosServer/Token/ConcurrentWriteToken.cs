@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net.Sockets;
 
-namespace Cosmos.Token
+namespace CosmosServer.Token
 {
-    public sealed class WriteToken
+    public sealed class ConcurrentWriteToken
     {
         SocketAsyncEventArgs _saea;
         readonly int _bufferSize;
@@ -13,15 +14,13 @@ namespace Cosmos.Token
         byte[] _bytesToSend = null;
         int _totalCurrentBytesSent = 0; // 전송한 패킷 사이즈
 
-        Queue<byte[]> _sendQueue = null;
+        ConcurrentQueue<byte[]> _sendQueue = null;
 
-        object item = new object();
-
-        public WriteToken(SocketAsyncEventArgs saea, int bufferSize)
+        public ConcurrentWriteToken(SocketAsyncEventArgs saea, int bufferSize)
         {            
             this._saea = saea;
             this._bufferSize = bufferSize;
-            this._sendQueue = new Queue<byte[]>();
+            this._sendQueue = new ConcurrentQueue<byte[]>();
         }
 
         public Socket Socket
@@ -41,11 +40,8 @@ namespace Cosmos.Token
                 return true;                
             }
             else
-            {
-                lock (item)
-                {
-                    _sendQueue.Enqueue(data);
-                }
+            {                
+                _sendQueue.Enqueue(data);
                 return false;
             }
         }
@@ -54,14 +50,7 @@ namespace Cosmos.Token
         {
             byte[] data = null;
 
-            lock(item) {
-                if (_sendQueue.Count > 0)
-                {
-                    data = _sendQueue.Dequeue();
-                }
-            }
-
-            if (data != null)
+            if (_sendQueue.TryDequeue(out data))
             {
                 _bytesToSend = data;
                 _totalCurrentBytesSent = 0;
