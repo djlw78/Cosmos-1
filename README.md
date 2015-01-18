@@ -1,5 +1,5 @@
 # Cosmos
-C# socket server and client. This application runs by using SocketAsyncEventArgs.
+C# socket server and client. This application runs by using SocketAsyncEventArgs. I made this for game server and client built in Unity.
 
 ## Server example
 ```csharp
