@@ -484,6 +484,7 @@ namespace Cosmos.Server
             System.Buffer.BlockCopy(wt.BytesToSend, 0, e.Buffer, wt.BufferOffset, bytesToSend); //TODO Exception Handling
             e.SetBuffer(wt.BufferOffset, bytesToSend);
 
+            
             bool willRaiseEvent = wt.Socket.SendAsync(e);
             if (!willRaiseEvent)
             {
@@ -601,7 +602,7 @@ namespace Cosmos.Server
         }
 
         /// <summary>
-        /// Server를 종료 아직 gracefully 하지는 않음.
+        /// Shutdown the server. it's not graceful yet.
         /// </summary>
         public void Shutdown()
         {
