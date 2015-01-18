@@ -258,38 +258,54 @@ namespace Cosmos.Server
         /// <param name="e"></param>
         private void CloseClientSocket(SocketAsyncEventArgs e)
         {
-            if (e == null) return;
+            Debug.WriteLine("CloseClientSocket", "[DEBUG]");
+            if (e == null || e.AcceptSocket == null) return;
 
-            Session session = (Session)e.UserToken;
+            Socket socket = e.AcceptSocket;
+            SocketAsyncEventArgs saea;
+            _channels.TryRemove(socket.GetHashCode(), out saea);            
+
+            Session session = new Session(e);
+            session.OnWriteTo += OnWriteTo;
+            session.OnWriteToAll += OnWriteToAll;
+
             OnClosed(this, session);
 
-            SocketAsyncEventArgs saea;
+            if (socket != null && socket.Connected)
+            {
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+            }                   
 
-            if (_channels.TryRemove(session.SessionId, out saea) == false)
+            if (e.UserToken is ReadToken)
+            {
+                Debug.WriteLine("Returning Read SAEA to pool", "[DEBUG]");
+                ReadToken rt = (ReadToken)e.UserToken;
+                e.AcceptSocket = null;
+                _poolReadEventArgs.Push(e);
+
+                Debug.WriteLine("Returning Write SAEA to pool", "[DEBUG]");
+                SocketAsyncEventArgs writeSaea = rt.WriteSaea;
+                if (writeSaea != null)
+                {
+                    writeSaea.AcceptSocket = null;
+                    _poolWriteEventArgs.Push(writeSaea);     
+                }                           
+            }
+            else if (e.UserToken is WriteToken)
+            {
+                Trace.WriteLine("Returning Write SAEA to pool", "[INFO]");
+                WriteToken wt = (WriteToken)e.UserToken;
+                e.AcceptSocket = null;
+                _poolWriteEventArgs.Push(e);
+            }
+            else
             {
                 return;
             }
-
-            try
-            {
-                if (e.AcceptSocket != null)
-                {
-                    e.AcceptSocket.Shutdown(SocketShutdown.Both);   // 더 이상 보내기/받기를 못하도록 한다.
-                    e.AcceptSocket.Close(); // 연결을 닫고 리소스를 모두 해제한다.      
-
-                }
-            }
-            catch (SocketException ex)
-            {
-                Trace.WriteLine(ex.StackTrace);
-            }
-            finally
-            {
-                e.AcceptSocket = null;
-                _poolReadEventArgs.Push(e);
-                _theMaxConnectionsEnforcer.Release();
-                Debug.WriteLine("OUT! Current connections:" + Interlocked.Decrement(ref _numberOfConnections), "[DEBUG]");
-            }
+            
+            _theMaxConnectionsEnforcer.Release();
+            Debug.WriteLine("OUT! Current connections:" + Interlocked.Decrement(ref _numberOfConnections), "[DEBUG]");            
         }
 
         /// <summary>
@@ -504,8 +520,7 @@ namespace Cosmos.Server
             if (e.BytesTransferred == 0)
             {
                 // Send 했는데 보낸 데이터가 없으면 연결 종료 한다.
-                //CloseClientSocket(e);
-                StartReceiveHeader(e);
+                CloseClientSocket(e);
                 return;
             }
 

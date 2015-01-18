@@ -24,6 +24,11 @@ namespace Cosmos.Server
             _payload = payload;
         }
 
+        public Session(SocketAsyncEventArgs saeaWrite)
+        {
+            _saeaWrite = saeaWrite;
+        }
+
         public int SessionId
         {
             get
