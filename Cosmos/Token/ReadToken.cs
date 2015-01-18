@@ -4,7 +4,9 @@ namespace Cosmos.Token
 {
     public sealed class ReadToken
     {
-        SocketAsyncEventArgs _saea;
+        SocketAsyncEventArgs _saeaRead;
+        SocketAsyncEventArgs _saeaWrite;
+
         readonly int _bufferSize;
 
         #region Offset
@@ -23,10 +25,10 @@ namespace Cosmos.Token
         int _totalProcessedDataLength = 0;
         #endregion
 
-        public ReadToken(SocketAsyncEventArgs e, int bufferSize, int headerSize)
+        public ReadToken(SocketAsyncEventArgs saeaRead, int bufferSize, int headerSize)
         {
-            _saea = e;
-            _headerOffset = e.Offset;
+            _saeaRead = saeaRead;
+            _headerOffset = saeaRead.Offset;
             _payloadOffset = _headerOffset + headerSize;
             _bufferSize = bufferSize;
         }
@@ -35,7 +37,19 @@ namespace Cosmos.Token
         {
             get
             {
-                return _saea.AcceptSocket;
+                return _saeaRead.AcceptSocket;
+            }
+        }
+
+        public SocketAsyncEventArgs WriteSaea
+        {
+            get
+            {
+                return _saeaWrite;
+            }
+            set
+            {
+                _saeaWrite = value;
             }
         }
 
@@ -145,8 +159,8 @@ namespace Cosmos.Token
         /// <returns>다음 읽어올 버퍼사이즈</returns>
         public int AddTotalData()
         {
-            System.Buffer.BlockCopy(_saea.Buffer, _saea.Offset, _totalData, _totalProcessedDataLength, _saea.BytesTransferred);
-            _totalProcessedDataLength += _saea.BytesTransferred;
+            System.Buffer.BlockCopy(_saeaRead.Buffer, _saeaRead.Offset, _totalData, _totalProcessedDataLength, _saeaRead.BytesTransferred);
+            _totalProcessedDataLength += _saeaRead.BytesTransferred;
             return NextBufferSizeToReceive;
         }
 
@@ -157,7 +171,7 @@ namespace Cosmos.Token
         /// <returns></returns>
         public int IncrementHeaderLength()
         {
-            _totalHeaderLength += _saea.BytesTransferred;
+            _totalHeaderLength += _saeaRead.BytesTransferred;
             return _totalHeaderLength;
         }
     }

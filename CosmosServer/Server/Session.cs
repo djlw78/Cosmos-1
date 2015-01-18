@@ -4,11 +4,11 @@ namespace Cosmos.Server
 {
     public class Session
     {
-        Socket _socket;
+        SocketAsyncEventArgs _saeaWrite;
         int _handlerId;
         object _payload;
 
-        public delegate void MessageWriteEventHandler(object sender, Socket socket, int handlerId, object message);
+        public delegate void MessageWriteEventHandler(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message);
         public event MessageWriteEventHandler OnWrite;
 
         public delegate void MessageWriteToAllEventHandler(object sender, int ignoreSessionId, int handlerId, object message);
@@ -17,9 +17,9 @@ namespace Cosmos.Server
         public delegate void MessageWriteToEventHandler(object sender, int sessionId, int handlerId, object message);
         public event MessageWriteToEventHandler OnWriteTo;
 
-        public Session(Socket socket, int handlerId, object payload)
+        public Session(SocketAsyncEventArgs saeaWrite, int handlerId, object payload)
         {
-            _socket = socket;
+            _saeaWrite = saeaWrite;
             _handlerId = handlerId;
             _payload = payload;
         }
@@ -28,7 +28,7 @@ namespace Cosmos.Server
         {
             get
             {
-                return _socket.GetHashCode();
+                return _saeaWrite.AcceptSocket.GetHashCode();
             }
         }
 
@@ -40,10 +40,6 @@ namespace Cosmos.Server
             }
         }
 
-        internal Socket Socket
-        {
-            get { return _socket; }
-        }
 
         public object Payload
         {
@@ -52,12 +48,12 @@ namespace Cosmos.Server
 
         public void Write(object message)
         {
-            OnWrite(this, Socket, 0, message);
+            OnWrite(this, _saeaWrite, 0, message);
         }
 
         public void Write(int handlerId, object message)
         {
-            OnWrite(this, Socket, 0, message);
+            OnWrite(this, _saeaWrite, 0, message);
         }
 
         public void WriteToAll(object message)

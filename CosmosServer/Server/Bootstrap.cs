@@ -42,7 +42,7 @@ namespace Cosmos.Server
         // the total number of clients connected to the server 
         Semaphore _theMaxConnectionsEnforcer;
 
-        ConcurrentDictionary<int, Socket> _sockets;
+        ConcurrentDictionary<int, SocketAsyncEventArgs> _channels;
 
         #endregion
 
@@ -70,11 +70,11 @@ namespace Cosmos.Server
 
             this._poolAcceptEventArgs = new SocketAsyncEventArgsPool(setting.MaxSimulateneousAccepts);
             this._poolReadEventArgs = new SocketAsyncEventArgsPool(setting.MaxConnections);
-            this._poolWriteEventArgs = new SocketAsyncEventArgsPool(setting.MaxConnections * setting.MaxConnections);    // write는 2배 이상 필요 전체 쓰기 진행 중에도 계속 쓰기 operation이 있을 수 있기 때문에
+            this._poolWriteEventArgs = new SocketAsyncEventArgsPool(setting.MaxConnections);
 
             this._theMaxConnectionsEnforcer = new Semaphore(setting.MaxConnections + 1, setting.MaxConnections + 1);
 
-            this._sockets = new ConcurrentDictionary<int, Socket>();
+            this._channels = new ConcurrentDictionary<int, SocketAsyncEventArgs>();
             Init();
         }
 
@@ -103,27 +103,22 @@ namespace Cosmos.Server
             }
             Trace.WriteLine("Done!");
 
-            Trace.Write("Creating " + _setting.MaxConnections + " SocketEventAsyncArgs for read...", "[INFO]");
+            Trace.Write("Creating " + _setting.MaxConnections + " SocketEventAsyncArgs for read and write...", "[INFO]");
             for (int i = 0; i < this._setting.MaxConnections; ++i)
             {
-                SocketAsyncEventArgs saea = new SocketAsyncEventArgs();
-                _readBufferManager.SetBuffer(saea);
-                saea.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-                ReadToken token = new ReadToken(saea, _setting.ReceiveBufferSize, _messageSerializer.GetHeaderSize());
-                saea.UserToken = token;
-                _poolReadEventArgs.Push(saea);
+                SocketAsyncEventArgs saeaRead = new SocketAsyncEventArgs();
+                _readBufferManager.SetBuffer(saeaRead);
+                saeaRead.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                saeaRead.UserToken = new ReadToken(saeaRead, _setting.ReceiveBufferSize, _messageSerializer.GetHeaderSize());
+                _poolReadEventArgs.Push(saeaRead);
 
-            }
-            Trace.WriteLine("Done!");
 
-            Trace.Write("Creating " + _setting.MaxConnections + " SocketEventAsyncArgs for write...", "[INFO]");
-            for (int i = 0; i < this._setting.MaxConnections; ++i)
-            {
-                SocketAsyncEventArgs saea = new SocketAsyncEventArgs();
-                _writeBufferManager.SetBuffer(saea);
-                saea.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-                saea.UserToken = new WriteToken(saea, _setting.SendBufferSize);
-                _poolWriteEventArgs.Push(saea);
+                SocketAsyncEventArgs saeaWrite = new SocketAsyncEventArgs();
+                _writeBufferManager.SetBuffer(saeaWrite);
+                saeaWrite.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                saeaWrite.UserToken = new WriteToken(saeaWrite, _setting.SendBufferSize);
+                _poolWriteEventArgs.Push(saeaWrite);
+
             }
             Trace.WriteLine("Done!");
         }
@@ -226,20 +221,24 @@ namespace Cosmos.Server
             Debug.WriteLine("IN! Current connections:" + Interlocked.Increment(ref _numberOfConnections), "[DEBUG]");
 
             //RW를 위한 SAEA를 Pool 에서 가지고 온다.
-            SocketAsyncEventArgs socketAsyncEventArgs = this._poolReadEventArgs.Pop();
-            socketAsyncEventArgs.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
-            ReadToken rt = ((ReadToken)socketAsyncEventArgs.UserToken);
+            SocketAsyncEventArgs saeaRead = this._poolReadEventArgs.Pop();
+            saeaRead.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
+            ReadToken rt = ((ReadToken)saeaRead.UserToken);
+
+            SocketAsyncEventArgs saeaWrite = this._poolWriteEventArgs.Pop();
+            saeaWrite.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
+            rt.WriteSaea = saeaWrite;
 
             // 채널컨테이너에 새로운 소켓 추가
-            _sockets.TryAdd(rt.Socket.GetHashCode(), acceptSocketEventArgs.AcceptSocket);
-            OnAccepted(this, socketAsyncEventArgs.AcceptSocket);
+            _channels.TryAdd(rt.Socket.GetHashCode(), saeaWrite);
+            OnAccepted(this, saeaRead.AcceptSocket);
 
             // Accept SAEA는 풀에 반환한다.
             acceptSocketEventArgs.AcceptSocket = null;
             this._poolAcceptEventArgs.Push(acceptSocketEventArgs);
 
             // Receive 시작
-            StartReceiveHeader(socketAsyncEventArgs);
+            StartReceiveHeader(saeaRead);
         }
 
         /// <summary>
@@ -264,9 +263,9 @@ namespace Cosmos.Server
             Session session = (Session)e.UserToken;
             OnClosed(this, session);
 
-            Socket socket;
+            SocketAsyncEventArgs saea;
 
-            if (_sockets.TryRemove(session.SessionId, out socket) == false)
+            if (_channels.TryRemove(session.SessionId, out saea) == false)
             {
                 return;
             }
@@ -392,7 +391,7 @@ namespace Cosmos.Server
                 // 데이터를 성공적으로 읽은경우 MessageReceived를 처리하고 다시 Receive operation을 시작한다.
                 object payload = _messageSerializer.Deserialize(rt.TotalData);
                 Debug.WriteLine("Handler ID:{0}, PayLoad:{1}", rt.HandlerId, payload);
-                Session session = new Session(e.AcceptSocket, rt.HandlerId, payload);
+                Session session = new Session(rt.WriteSaea, rt.HandlerId, payload);
                 session.OnWrite += OnWrite;
                 session.OnWriteTo += OnWriteTo;
                 session.OnWriteToAll += OnWriteToAll;
@@ -483,7 +482,6 @@ namespace Cosmos.Server
 
             System.Buffer.BlockCopy(wt.BytesToSend, 0, e.Buffer, wt.BufferOffset, bytesToSend); //TODO Exception Handling
             e.SetBuffer(wt.BufferOffset, bytesToSend);
-
             
             bool willRaiseEvent = wt.Socket.SendAsync(e);
             if (!willRaiseEvent)
@@ -519,7 +517,14 @@ namespace Cosmos.Server
             }
             else
             {
-                FinishSend(e);
+                if (wt.LoadNextData())
+                {
+                    StartSend(e, wt.NextBufferSizeToSend);
+                }
+                else
+                {
+                    FinishSend(e);
+                }
             }
         }
 
@@ -548,9 +553,6 @@ namespace Cosmos.Server
             Debug.WriteLine("FinishSend", "[DEBUG]");
             WriteToken wt = (WriteToken)e.UserToken;
             wt.Initialize();
-            e.AcceptSocket = null;
-
-            _poolWriteEventArgs.Push(e);
         }
 
         /// <summary>
@@ -559,15 +561,16 @@ namespace Cosmos.Server
         /// <param name="socket"></param>
         /// <param name="handlerId"></param>
         /// <param name="message"></param>
-        private void OnWrite(object sender, Socket socket, int handlerId, object message)
+        private void OnWrite(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message)
         {
-            SocketAsyncEventArgs saea = _poolWriteEventArgs.Pop();
-            saea.AcceptSocket = socket;
+            Debug.WriteLine("OnWrite:HandlerId:{0}, Payload:{1}", handlerId, message);
+            WriteToken wt = (WriteToken)saeaWrite.UserToken;
 
-            WriteToken wt = (WriteToken)saea.UserToken;
-            wt.BytesToSend = _messageSerializer.Serialize(handlerId, message);
-
-            StartSend(saea, wt.NextBufferSizeToSend);
+            bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
+            if (canStartNow)
+            {
+                StartSend(saeaWrite, wt.NextBufferSizeToSend);
+            }
         }
 
         /// <summary>
@@ -578,10 +581,10 @@ namespace Cosmos.Server
         /// <param name="message"></param>
         private void OnWriteTo(object sender, int sessionId, int handlerId, object message)
         {
-            Socket socket;
-            if (_sockets.TryGetValue(sessionId, out socket))
+            SocketAsyncEventArgs saea;
+            if (_channels.TryGetValue(sessionId, out saea))
             {
-                OnWrite(sender, socket, handlerId, message);
+                OnWrite(sender, saea, handlerId, message);
             }
         }
 
@@ -593,11 +596,14 @@ namespace Cosmos.Server
         /// <param name="message"></param>
         private void OnWriteToAll(object sender, int ignoreSessionId, int handlerId, object message)
         {
-            IEnumerator<Socket> enumerator = _sockets.Values.GetEnumerator();
+            IEnumerator<SocketAsyncEventArgs> enumerator = _channels.Values.GetEnumerator();
             while (enumerator.MoveNext())
             {
-                Socket s = enumerator.Current;
-                OnWrite(sender, s, handlerId, message);
+                SocketAsyncEventArgs s = enumerator.Current;
+                if (s.AcceptSocket.GetHashCode().Equals(ignoreSessionId) == false)
+                {
+                    OnWrite(sender, s, handlerId, message);
+                }
             }
         }
 
@@ -606,14 +612,14 @@ namespace Cosmos.Server
         /// </summary>
         public void Shutdown()
         {
-            IEnumerator<Socket> enumerator = _sockets.Values.GetEnumerator();
+            IEnumerator<SocketAsyncEventArgs> enumerator = _channels.Values.GetEnumerator();
             while (enumerator.MoveNext())
             {
-                Socket s = enumerator.Current;
-                if (s != null && s.Connected == true)
+                SocketAsyncEventArgs s = enumerator.Current;
+                if (s != null && s.AcceptSocket.Connected == true)
                 {
-                    s.Shutdown(SocketShutdown.Both);
-                    s.Close();
+                    s.AcceptSocket.Shutdown(SocketShutdown.Both);
+                    s.AcceptSocket.Close();
                 }
             }
         }

@@ -24,8 +24,8 @@ namespace Cosmos.Client
 
         #endregion
 
-        #region 
-        SocketAsyncEventArgsPool _poolWriteSaea;
+        #region SAEA
+        SocketAsyncEventArgs _saeaWrite;
         #endregion
 
         #region Event handler
@@ -46,9 +46,7 @@ namespace Cosmos.Client
             this._messageSerializer = messageSerializer;
 
             this._readBufferManager = new BufferManager(setting.ReadBufferSize, 1, _messageSerializer.GetHeaderSize());
-            this._writeBufferManager = new BufferManager(setting.WriteBufferSize, setting.WriteSimultaneous, 0);
-
-            this._poolWriteSaea = new SocketAsyncEventArgsPool(setting.WriteSimultaneous);
+            this._writeBufferManager = new BufferManager(setting.WriteBufferSize, 1, 0);
 
             Init();
         }
@@ -107,16 +105,13 @@ namespace Cosmos.Client
                 _readSaea.UserToken = new ReadToken(_readSaea, _setting.ReadBufferSize, _messageSerializer.GetHeaderSize());
                 Trace.WriteLine("Done!");
 
-                Trace.Write("Creating " + _setting.WriteSimultaneous + " SocketEventAsyncArgs for write...", "[INFO]");
-                for (int i = 0; i < _setting.WriteSimultaneous; ++i)
-                {
-                    SocketAsyncEventArgs e = new SocketAsyncEventArgs();
-                    _writeBufferManager.SetBuffer(e);
-                    e.AcceptSocket = (Socket)saeaConnect.UserToken;
-                    e.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-                    e.UserToken = new WriteToken(e, _setting.WriteBufferSize);
-                    _poolWriteSaea.Push(e);
-                }
+                Trace.Write("Creating 1 SocketEventAsyncArgs for write...", "[INFO]");
+                _saeaWrite = new SocketAsyncEventArgs();
+                _writeBufferManager.SetBuffer(_saeaWrite);
+                _saeaWrite.AcceptSocket = (Socket)saeaConnect.UserToken;
+                _saeaWrite.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                _saeaWrite.UserToken = new WriteToken(_saeaWrite, _setting.WriteBufferSize);
+
                 Trace.WriteLine("Done!");
 
                 OnConnected(this);
@@ -160,6 +155,7 @@ namespace Cosmos.Client
         /// <param name="nextBufferSizeToRead">Socket buffer에서 다음으로 읽어올 buffer size</param>
         private void ContinueReceive(SocketAsyncEventArgs e, int nextBufferSizeToRead)
         {
+            Debug.WriteLine("ContinueReceive", "[DEBUG]");
             ReadToken rt = (ReadToken)e.UserToken;
             e.SetBuffer(e.Offset, nextBufferSizeToRead);
 
@@ -284,7 +280,7 @@ namespace Cosmos.Client
             {
                 // Send 했는데 보낸 데이터가 없으면 연결 종료 한다.
                 //CloseClientSocket(e);
-                StartReceiveHeader(e);
+                //StartReceiveHeader(e);
                 return;
             }
 
@@ -296,7 +292,14 @@ namespace Cosmos.Client
             }
             else
             {
-                FinishSend(e);
+                if (wt.LoadNextData())
+                {
+                    StartSend(e, wt.NextBufferSizeToSend);
+                }
+                else
+                {
+                    FinishSend(e);
+                }
             }
         }
 
@@ -323,18 +326,18 @@ namespace Cosmos.Client
         {
             Debug.WriteLine("FinishSend", "[DEBUG]");
             WriteToken wt = (WriteToken)e.UserToken;
-            wt.Initialize();
-            _poolWriteSaea.Push(e);            
+            wt.Initialize();          
         }
 
         public void Send(int handlerId, object message)
         {
-            SocketAsyncEventArgs saea = _poolWriteSaea.Pop();
+            WriteToken wt = (WriteToken)_saeaWrite.UserToken;
 
-            WriteToken wt = (WriteToken)saea.UserToken;
-            wt.BytesToSend = _messageSerializer.Serialize(handlerId, message);
-
-            StartSend(saea, wt.NextBufferSizeToSend);
+            bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
+            if (canStartNow)
+            {
+                StartSend(_saeaWrite, wt.NextBufferSizeToSend);
+            }
         }
 
         public void Send(object message)

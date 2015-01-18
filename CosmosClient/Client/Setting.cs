@@ -5,13 +5,11 @@ namespace Cosmos.Client
     {
         readonly int _readBufferSize;
         readonly int _writeBufferSize;
-        readonly int _writeSimulataneous;
 
-        public Setting(int readBufferSize, int writeBufferSize, int writeSimultaneous)
+        public Setting(int readBufferSize, int writeBufferSize)
         {
             _readBufferSize = readBufferSize;
             _writeBufferSize = writeBufferSize;
-            _writeSimulataneous = writeSimultaneous;
         }
 
         public int ReadBufferSize
@@ -30,12 +28,5 @@ namespace Cosmos.Client
             }
         }
 
-        public int WriteSimultaneous
-        {
-            get
-            {
-                return _writeSimulataneous;
-            }
-        }
     }
 }
