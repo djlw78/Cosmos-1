@@ -493,7 +493,7 @@ namespace Cosmos.Server
         /// <param name="bytesToSend"></param>
         private void StartSend(SocketAsyncEventArgs e, int bytesToSend)
         {
-            Debug.WriteLine("StartSend-BytesToSend:{0}", bytesToSend);
+            Debug.WriteLine("StartSend-BytesToSend:" + bytesToSend, "[DEBUG]");
             WriteToken wt = (WriteToken)e.UserToken;
 
             System.Buffer.BlockCopy(wt.BytesToSend, 0, e.Buffer, wt.BufferOffset, bytesToSend); //TODO Exception Handling
@@ -508,7 +508,7 @@ namespace Cosmos.Server
 
         private void ProcessSend(SocketAsyncEventArgs e)
         {
-            Debug.WriteLine("ProcessSend");
+            Debug.WriteLine("ProcessSend","[DEBUG]");
             WriteToken wt = (WriteToken)e.UserToken;
 
             if (e.SocketError != SocketError.Success)
@@ -545,7 +545,7 @@ namespace Cosmos.Server
 
         private void ContinueSend(SocketAsyncEventArgs e, int nextBufferSizeToSend)
         {
-            Debug.WriteLine("ContinueSend-nextBufferSizeToSend:{0}", nextBufferSizeToSend);
+            Debug.WriteLine("ContinueSend-nextBufferSizeToSend:" + nextBufferSizeToSend, "[DEBUG]");
             WriteToken wt = (WriteToken)e.UserToken;
 
             System.Buffer.BlockCopy(wt.BytesToSend, wt.TotalCurrentBytesSent, e.Buffer, wt.BufferOffset, nextBufferSizeToSend);
@@ -578,7 +578,7 @@ namespace Cosmos.Server
         /// <param name="message"></param>
         private void OnWrite(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message)
         {
-            Debug.WriteLine("OnWrite:HandlerId:{0}, Payload:{1}", handlerId, message);
+            Debug.WriteLine("OnWrite:HandlerId:" + handlerId +", Payload:" + message,"[DEBUG]");
             WriteToken wt = (WriteToken)saeaWrite.UserToken;
 
             bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
