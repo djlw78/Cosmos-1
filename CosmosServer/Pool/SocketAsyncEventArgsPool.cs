@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Net.Sockets;
 
-namespace Cosmos.Pool
+namespace CosmosServer.Pool
 {
     public sealed class SocketAsyncEventArgsPool
     {

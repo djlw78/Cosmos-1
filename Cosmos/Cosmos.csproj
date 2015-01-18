@@ -34,11 +34,9 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Atomic\AtomicBoolean.cs" />
     <Compile Include="Buffer\BufferManager.cs" />
     <Compile Include="Codec\ClassMessageSerializer.cs" />
     <Compile Include="Codec\IMessageSerializer.cs" />
-    <Compile Include="Pool\SocketAsyncEventArgsPool.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Token\ReadToken.cs" />
     <Compile Include="Token\WriteToken.cs" />

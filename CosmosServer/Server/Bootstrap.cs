@@ -1,6 +1,5 @@
 ﻿using Cosmos.Buffer;
 using Cosmos.Codec;
-using Cosmos.Pool;
 using Cosmos.Token;
 using System;
 using System.Collections.Concurrent;
@@ -9,6 +8,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using CosmosServer.Token;
+using CosmosServer.Pool;
 
 namespace Cosmos.Server
 {
