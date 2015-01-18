@@ -1,5 +1,5 @@
 # Cosmos
-C# socket server and client. This application runs by using SocketAsyncEventArgs. I made this for game server and client built in Unity.
+C# socket server and client by using SocketAsyncEventArgs for read and write operation. The purpose of this application is for making game server and client. The client target platform is Unity 3D.
 
 ## Server example
 ```csharp
@@ -71,13 +71,13 @@ static void bootstrap_OnAccepted(object sender, System.Net.Sockets.Socket socket
 ```csharp
 const int READ_BUFFER_SIZE = 512;
 const int WRITE_BUFFER_SIZE = 512;
-const int WRITE_SIMULTANEOUS = 10;
 
 static Bootstrap bootstrap;
 
 static void Main(string[] args)
 {
-	Setting setting = new Setting(READ_BUFFER_SIZE, WRITE_BUFFER_SIZE, WRITE_SIMULTANEOUS);
+	Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
+	Setting setting = new Setting(READ_BUFFER_SIZE, WRITE_BUFFER_SIZE);
 
 	bootstrap = new Bootstrap(setting, new ClassMessageSerializer());
 
@@ -91,17 +91,17 @@ static void Main(string[] args)
 	Console.ReadLine();
 }
 
-static void bootstrap_OnSocketError(object sender, System.Net.Sockets.SocketError socketError)
-{
-	Console.WriteLine("OnSocketError:" + socketError.ToString());
-}
-
-static void bootstrap_OnRead(object sender, Session session, object message)
+private static void bootstrap_OnRead(object sender, object message)
 {
 	GreetingMessage greeting = (GreetingMessage)message;
 	Console.WriteLine("Name:{0}, Greeting:{1}", greeting.Name, greeting.Greeting);
-	
+
 	bootstrap.Send(greeting);
+}
+
+static void bootstrap_OnSocketError(object sender, System.Net.Sockets.SocketError socketError)
+{
+	Console.WriteLine("OnSocketError:" + socketError.ToString());
 }
 
 static void bootstrap_OnDisconnected(object sender)
