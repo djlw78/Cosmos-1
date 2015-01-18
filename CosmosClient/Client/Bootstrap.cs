@@ -30,7 +30,7 @@ namespace Cosmos.Client
 
         #region Event handler
         public delegate void ConnectEventHandler(object sender);
-        public delegate void ReadEventHandler(object sender, Session session, object message);
+        public delegate void ReadEventHandler(object sender, object message);
         public delegate void DisconnectEventHandler(object sender);
         public delegate void SocketErrorEventHandler(object sender, SocketError socketError);
 
@@ -234,7 +234,7 @@ namespace Cosmos.Client
                 object payload = _messageSerializer.Deserialize(rt.TotalData);
                 //Debug.WriteLine("Handler ID:{0}, PayLoad:{1}", rt.HandlerId, payload);
                 Session session = new Session(rt.HandlerId, payload);
-                OnRead(this, session, payload);
+                OnRead(this, payload);
                 StartReceiveHeader(e);
             }
         }
