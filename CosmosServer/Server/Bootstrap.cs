@@ -51,7 +51,7 @@ public class Bootstrap
 
     public delegate void ReadEventHandler(object sender, Session session);
     public delegate void AcceptedEventHandler(object sender, Socket socket);
-    public delegate void ClosedEventHandler(object sender, Session session);
+    public delegate void ClosedEventHandler(object sender, Session session, Socket socket);
     public delegate void SocketErrorEventHandler(object sender, SocketError socketError);
 
     public event ReadEventHandler OnRead;
@@ -273,7 +273,7 @@ public class Bootstrap
         session.OnWriteTo += OnWriteTo;
         session.OnWriteToAllExcept += OnWriteToAllExcept;
 
-        OnClosed(this, session);
+        OnClosed(this, session, socket);
 
         if (socket != null && socket.Connected)
         {
