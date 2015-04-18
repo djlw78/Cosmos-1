@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Threading;
 using CosmosServer.Token;
 using CosmosServer.Pool;
+using Thrift.Protocol;
 
 namespace Cosmos.Server
 {
@@ -143,6 +144,7 @@ public class Bootstrap
         MessageWriter.OnWriteTo += OnWriteTo;
         MessageWriter.OnWriteToAll += OnWriteToAll;
     }
+
 
     /// <summary>
     /// 클라이언트로부터의 접속 요청에 대한 처리 동작을 시작한다.
@@ -335,6 +337,7 @@ public class Bootstrap
     /// </summary>
     private void ContinueReceiveHeader(SocketAsyncEventArgs e, int bytesRead, int nextBytesToRead)
     {
+
         ReadToken rt = (ReadToken)e.UserToken;
         e.SetBuffer(rt.HeaderOffset + bytesRead, nextBytesToRead);
 
@@ -350,6 +353,7 @@ public class Bootstrap
     /// </summary>
     private void ProcessReceive(SocketAsyncEventArgs e)
     {
+       
         ReadToken rt = (ReadToken)e.UserToken;
 
         if (e.SocketError != SocketError.Success)
@@ -408,10 +412,7 @@ public class Bootstrap
         }
         else
         {
-            // 데이터를 성공적으로 읽은경우 MessageReceived를 처리하고 다시 Receive operation을 시작한다.
-            object payload = _messageSerializer.Deserialize(rt.TotalData);
-            Debug.WriteLine("Handler ID:{0}, PayLoad:{1}", rt.HandlerId, payload);
-            Session session = new Session(rt.WriteSaea, rt.HandlerId, payload);
+            Session session = new Session(rt.WriteSaea, rt.HandlerId, rt.TotalData);
             session.OnWrite += OnWrite;
             session.OnWriteTo += OnWriteTo;
             session.OnWriteToAllExcept += OnWriteToAllExcept;
@@ -569,12 +570,12 @@ public class Bootstrap
     /// <param name="socket"></param>
     /// <param name="handlerId"></param>
     /// <param name="message"></param>
-    private void OnWrite(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message)
+    private void OnWrite<T>(SocketAsyncEventArgs saeaWrite, int handlerId, T message) where T : TBase
     {
         Debug.WriteLine("OnWrite:HandlerId:" + handlerId +", Payload:" + message,"[DEBUG]");
         ConcurrentWriteToken wt = (ConcurrentWriteToken)saeaWrite.UserToken;
 
-        bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
+        bool canStartNow = wt.AddToSendQueue(ThriftMessageSerializer.Serialize<T>(handlerId, message));
         if (canStartNow)
         {
             StartSend(saeaWrite, wt.NextBufferSizeToSend);
@@ -587,12 +588,12 @@ public class Bootstrap
     /// <param name="sessionId"></param>
     /// <param name="handlerId"></param>
     /// <param name="message"></param>
-    private void OnWriteTo(object sender, int sessionId, int handlerId, object message)
+    private void OnWriteTo(int sessionId, int handlerId, TBase message)
     {
         SocketAsyncEventArgs saea;
         if (_channels.TryGetValue(sessionId, out saea))
         {
-            OnWrite(sender, saea, handlerId, message);
+            OnWrite(saea, handlerId, message);
         }
     }
 
@@ -602,7 +603,7 @@ public class Bootstrap
     /// <param name="ignoreSessionId"></param>
     /// <param name="handlerId"></param>
     /// <param name="message"></param>
-    private void OnWriteToAllExcept(object sender, int ignoreSessionId, int handlerId, object message)
+    private void OnWriteToAllExcept<T>(int ignoreSessionId, int handlerId, T message) where T : TBase
     {
         IEnumerator<SocketAsyncEventArgs> enumerator = _channels.Values.GetEnumerator();
         while (enumerator.MoveNext())
@@ -610,7 +611,7 @@ public class Bootstrap
             SocketAsyncEventArgs s = enumerator.Current;
             if (s.AcceptSocket.GetHashCode().Equals(ignoreSessionId) == false)
             {
-                OnWrite(sender, s, handlerId, message);
+                OnWrite<T>(s, handlerId, message);
             }
         }
     }
@@ -621,13 +622,13 @@ public class Bootstrap
     /// <param name="ignoreSessionId"></param>
     /// <param name="handlerId"></param>
     /// <param name="message"></param>
-    private void OnWriteToAll(object sender, int handlerId, object message)
+    private void OnWriteToAll<T>(int handlerId, T message) where T : TBase
     {
         IEnumerator<SocketAsyncEventArgs> enumerator = _channels.Values.GetEnumerator();
         while (enumerator.MoveNext())
         {
             SocketAsyncEventArgs s = enumerator.Current;
-            OnWrite(sender, s, handlerId, message);
+            OnWrite<T>(s, handlerId, message);
         }
     }
 

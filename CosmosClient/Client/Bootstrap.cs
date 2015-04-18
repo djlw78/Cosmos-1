@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using Thrift.Protocol;
 
 namespace Cosmos.Client
 {
@@ -27,7 +28,7 @@ namespace Cosmos.Client
 
         #region Event handler
         public delegate void ConnectEventHandler(object sender);
-        public delegate void ReadEventHandler(object sender, object message);
+        public delegate void ReadEventHandler(object sender, int handlerId, byte[] payload);
         public delegate void DisconnectEventHandler(object sender);
         public delegate void SocketErrorEventHandler(object sender, SocketError socketError);
 
@@ -222,12 +223,8 @@ namespace Cosmos.Client
                 ContinueReceive(e, nextBufferSizeToRead);
             }
             else
-            {
-                // 데이터를 성공적으로 읽은경우 MessageReceived를 처리하고 다시 Receive operation을 시작한다.
-                object payload = _messageSerializer.Deserialize(rt.TotalData);
-                //Debug.WriteLine("Handler ID:{0}, PayLoad:{1}", rt.HandlerId, payload);
-                Session session = new Session(rt.HandlerId, payload);
-                OnRead(this, payload);
+            {                            
+                OnRead(this, rt.HandlerId, rt.TotalData);
                 StartReceiveHeader(e);
             }
         }
@@ -315,21 +312,21 @@ namespace Cosmos.Client
             }
         }
 
-
-        public void Send(int handlerId, object message)
+        public void Send<T>(int handlerId, T message) where T : TBase
         {
+            Debug.WriteLine("HandlerId:" + handlerId);
             WriteToken wt = (WriteToken)_saeaWrite.UserToken;
 
-            bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
+            bool canStartNow = wt.AddToSendQueue(ThriftMessageSerializer.Serialize<T>(handlerId, message));
             if (canStartNow)
             {
                 StartSend(_saeaWrite, wt.NextBufferSizeToSend);
             }
         }
 
-        public void Send(object message)
+        public void Send<T>(T message) where T : TBase
         {
-            this.Send(0, message);
+            this.Send<T>(0, message);
         }
 
         /// <summary>

@@ -1,4 +1,6 @@
-﻿using System.Net.Sockets;
+﻿using System;
+using System.Net.Sockets;
+using Thrift.Protocol;
 
 namespace Cosmos.Server
 {
@@ -6,18 +8,18 @@ public class Session
 {
     SocketAsyncEventArgs _saeaWrite;
     int _handlerId;
-    object _payload;
+    byte[] _payload;
 
-    public delegate void MessageWriteEventHandler(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message);
+    public delegate void MessageWriteEventHandler(SocketAsyncEventArgs saeaWrite, int handlerId, TBase message);
     public event MessageWriteEventHandler OnWrite;
 
-    public delegate void MessageWriteToAllEventHandler(object sender, int ignoreSessionId, int handlerId, object message);
+    public delegate void MessageWriteToAllEventHandler(int ignoreSessionId, int handlerId, TBase message);
     public event MessageWriteToAllEventHandler OnWriteToAllExcept;
 
-    public delegate void MessageWriteToEventHandler(object sender, int sessionId, int handlerId, object message);
+    public delegate void MessageWriteToEventHandler(int sessionId, int handlerId, TBase message);
     public event MessageWriteToEventHandler OnWriteTo;
 
-    public Session(SocketAsyncEventArgs saeaWrite, int handlerId, object payload)
+    public Session(SocketAsyncEventArgs saeaWrite, int handlerId, byte[] payload)
     {
         _saeaWrite = saeaWrite;
         _handlerId = handlerId;
@@ -46,7 +48,7 @@ public class Session
     }
 
 
-    public object Payload
+    public byte[] Payload
     {
         get
         {
@@ -54,29 +56,29 @@ public class Session
         }
     }
 
-    public void Write(object message)
+    public void Write(TBase message)
     {
-        OnWrite(this, _saeaWrite, 0, message);
+        OnWrite( _saeaWrite, 0, message);
     }
 
-    public void Write(int handlerId, object message)
+    public void Write(int handlerId, TBase message)
     {
-        OnWrite(this, _saeaWrite, 0, message);
+        OnWrite( _saeaWrite, 0, message);
     }
 
-    public void WriteToAllExceptSelf(object message)
+    public void WriteToAllExceptSelf(TBase message)
     {
         WriteToAllExcept(SessionId, 0, message);
     }
 
-    public void WriteToAllExcept(int ignoreSessionId, object message)
+    public void WriteToAllExcept(int ignoreSessionId, TBase message)
     {
         WriteToAllExcept(ignoreSessionId, 0, message);
     }
 
-    public void WriteToAllExcept(int ignoreSessionId, int handlerId, object message)
+    public void WriteToAllExcept(int ignoreSessionId, int handlerId, TBase message)
     {
-        OnWriteToAllExcept(this, ignoreSessionId, handlerId, message);
+        OnWriteToAllExcept(ignoreSessionId, handlerId, message);
     }
 
     /// <summary>
@@ -84,9 +86,9 @@ public class Session
     /// </summary>
     /// <param name="sessionId"></param>
     /// <param name="message"></param>
-    public void WriteTo(int sessionId, object message)
+    public void WriteTo(int sessionId, TBase message)
     {
-        OnWriteTo(this, sessionId, 0, message);
+        OnWriteTo(sessionId, 0, message);
     }
 
     /// <summary>
@@ -94,9 +96,9 @@ public class Session
     /// </summary>
     /// <param name="sessionId"></param>
     /// <param name="message"></param>
-    public void WriteTo(int sessionId, int handlerId, object message)
+    public void WriteTo(int sessionId, int handlerId, TBase message)
     {
-        OnWriteTo(this, sessionId, handlerId, message);
+        OnWriteTo( sessionId, handlerId, message);
     }
 }
 }

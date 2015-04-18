@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Thrift.Protocol;
 
 namespace Cosmos.Codec
 {
@@ -17,7 +18,7 @@ namespace Cosmos.Codec
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        byte[] Serialize(int handlerId, object message);
+        //byte[] Serialize<T>(int handlerId, T message) where T : TBase;
 
         /// <summary>
         /// 헤더 정보를 out param으로 받는다. header 유효성을 검증한다
@@ -32,6 +33,6 @@ namespace Cosmos.Codec
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        object Deserialize(byte[] data);
+        //T Deserialize<T>(byte[] data) where T : TBase, new();
     }
 }
