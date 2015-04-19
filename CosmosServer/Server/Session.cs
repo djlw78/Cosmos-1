@@ -63,7 +63,7 @@ public class Session
 
     public void Write(int handlerId, TBase message)
     {
-        OnWrite( _saeaWrite, 0, message);
+        OnWrite(_saeaWrite, handlerId, message);
     }
 
     public void WriteToAllExceptSelf(TBase message)
