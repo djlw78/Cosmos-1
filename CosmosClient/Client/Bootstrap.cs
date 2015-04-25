@@ -315,6 +315,11 @@ namespace Cosmos.Client
         public void Send<T>(int handlerId, T message) where T : TBase
         {
             Debug.WriteLine("HandlerId:" + handlerId);
+            if (_saeaWrite == null)
+            {
+                Debug.WriteLine("Connection has not been established yet.");
+                return;
+            }
             WriteToken wt = (WriteToken)_saeaWrite.UserToken;
 
             bool canStartNow = wt.AddToSendQueue(ThriftMessageSerializer.Serialize<T>(handlerId, message));
