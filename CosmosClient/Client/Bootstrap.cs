@@ -324,11 +324,6 @@ namespace Cosmos.Client
             }
         }
 
-        public void Send<T>(T message) where T : TBase
-        {
-            this.Send<T>(0, message);
-        }
-
         /// <summary>
         /// SocketError에 대한 처리
         /// </summary>
