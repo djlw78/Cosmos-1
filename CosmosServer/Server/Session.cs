@@ -55,25 +55,9 @@ public class Session
             return _payload;
         }
     }
-
-    public void Write(TBase message)
-    {
-        OnWrite( _saeaWrite, 0, message);
-    }
-
     public void Write(int handlerId, TBase message)
     {
         OnWrite(_saeaWrite, handlerId, message);
-    }
-
-    public void WriteToAllExceptSelf(TBase message)
-    {
-        WriteToAllExcept(SessionId, 0, message);
-    }
-
-    public void WriteToAllExcept(int ignoreSessionId, TBase message)
-    {
-        WriteToAllExcept(ignoreSessionId, 0, message);
     }
 
     public void WriteToAllExcept(int ignoreSessionId, int handlerId, TBase message)
@@ -86,19 +70,9 @@ public class Session
     /// </summary>
     /// <param name="sessionId"></param>
     /// <param name="message"></param>
-    public void WriteTo(int sessionId, TBase message)
-    {
-        OnWriteTo(sessionId, 0, message);
-    }
-
-    /// <summary>
-    /// session id 에게 메세지를 보낸다.
-    /// </summary>
-    /// <param name="sessionId"></param>
-    /// <param name="message"></param>
     public void WriteTo(int sessionId, int handlerId, TBase message)
     {
-        OnWriteTo( sessionId, handlerId, message);
+        OnWriteTo(sessionId, handlerId, message);
     }
 }
 }
