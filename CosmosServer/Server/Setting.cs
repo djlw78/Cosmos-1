@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net;
 
 namespace Cosmos.Server
 {
@@ -29,6 +24,21 @@ namespace Cosmos.Server
             this._sendBufferSize = sendBufferSize;
             this._maxSimultaneousAceepts = maxSimultaneousAceepts;
         }
+
+        public Setting(int port
+                        , IPEndPoint endPoint    
+                        , int backLog, int maxConnections
+                        , int receiveBufferSize
+                        , int sendBufferSize
+                        , int maxSimultaneousAceepts)
+        {
+            this._localEndPoint = endPoint;
+            this._backLog = backLog;
+            this._maxConnections = maxConnections;
+            this._receiveBufferSize = receiveBufferSize;
+            this._sendBufferSize = sendBufferSize;
+            this._maxSimultaneousAceepts = maxSimultaneousAceepts;
+        }      
 
         public IPEndPoint LocalEndPoint
         {
