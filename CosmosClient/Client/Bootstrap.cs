@@ -58,7 +58,11 @@ namespace Cosmos.Client
         public void Connect(string host, int port)
         {
             IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(host), port);
+            Connect(remoteEP);
+        }
 
+        public void Connect(IPEndPoint remoteEP)
+        {
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             SocketAsyncEventArgs saeaConnect = new SocketAsyncEventArgs();
 
