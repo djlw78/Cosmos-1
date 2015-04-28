@@ -35,6 +35,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Buffer\BufferManager.cs" />
+    <Compile Include="Codec\BaseMessageSerializer.cs" />
     <Compile Include="Codec\ClassMessageSerializer.cs" />
     <Compile Include="Codec\IMessageSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

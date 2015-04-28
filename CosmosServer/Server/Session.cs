@@ -6,18 +6,18 @@ public class Session
 {
     SocketAsyncEventArgs _saeaWrite;
     int _handlerId;
-    object _payload;
+    byte[] _payload;
 
-    public delegate void MessageWriteEventHandler(object sender, SocketAsyncEventArgs saeaWrite, int handlerId, object message);
+    public delegate void MessageWriteEventHandler( SocketAsyncEventArgs saeaWrite, ushort handlerId, object message);
     public event MessageWriteEventHandler OnWrite;
 
-    public delegate void MessageWriteToAllEventHandler(object sender, int ignoreSessionId, int handlerId, object message);
+    public delegate void MessageWriteToAllEventHandler(int ignoreSessionId, ushort handlerId, object message);
     public event MessageWriteToAllEventHandler OnWriteToAllExcept;
 
-    public delegate void MessageWriteToEventHandler(object sender, int sessionId, int handlerId, object message);
+    public delegate void MessageWriteToEventHandler(int sessionId, ushort handlerId, object message);
     public event MessageWriteToEventHandler OnWriteTo;
 
-    public Session(SocketAsyncEventArgs saeaWrite, int handlerId, object payload)
+    public Session(SocketAsyncEventArgs saeaWrite, ushort handlerId, byte[] payload)
     {
         _saeaWrite = saeaWrite;
         _handlerId = handlerId;
@@ -46,7 +46,7 @@ public class Session
     }
 
 
-    public object Payload
+    public byte[] Payload
     {
         get
         {
@@ -54,29 +54,19 @@ public class Session
         }
     }
 
-    public void Write(object message)
+    public void Write<T>(ushort handlerId, T message)
     {
-        OnWrite(this, _saeaWrite, 0, message);
+        OnWrite(_saeaWrite, handlerId, message);
     }
 
-    public void Write(int handlerId, object message)
+    public void WriteToAllExceptSelf<T>(ushort handlerId, T message)
     {
-        OnWrite(this, _saeaWrite, 0, message);
+        WriteToAllExcept(SessionId, handlerId, message);
     }
 
-    public void WriteToAllExceptSelf(object message)
+    public void WriteToAllExcept(int ignoreSessionId, ushort handlerId, object message)
     {
-        WriteToAllExcept(SessionId, 0, message);
-    }
-
-    public void WriteToAllExcept(int ignoreSessionId, object message)
-    {
-        WriteToAllExcept(ignoreSessionId, 0, message);
-    }
-
-    public void WriteToAllExcept(int ignoreSessionId, int handlerId, object message)
-    {
-        OnWriteToAllExcept(this, ignoreSessionId, handlerId, message);
+        OnWriteToAllExcept(ignoreSessionId, handlerId, message);
     }
 
     /// <summary>
@@ -84,19 +74,9 @@ public class Session
     /// </summary>
     /// <param name="sessionId"></param>
     /// <param name="message"></param>
-    public void WriteTo(int sessionId, object message)
+    public void WriteTo(int sessionId, ushort handlerId, object message)
     {
-        OnWriteTo(this, sessionId, 0, message);
-    }
-
-    /// <summary>
-    /// session id 에게 메세지를 보낸다.
-    /// </summary>
-    /// <param name="sessionId"></param>
-    /// <param name="message"></param>
-    public void WriteTo(int sessionId, int handlerId, object message)
-    {
-        OnWriteTo(this, sessionId, handlerId, message);
+        OnWriteTo(sessionId, handlerId, message);
     }
 }
 }

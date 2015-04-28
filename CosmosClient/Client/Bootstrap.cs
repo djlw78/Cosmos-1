@@ -26,10 +26,10 @@ public class Bootstrap
     #endregion
 
     #region Event handler
-    public delegate void ConnectEventHandler(object sender);
-    public delegate void ReadEventHandler(object sender, object message);
-    public delegate void DisconnectEventHandler(object sender);
-    public delegate void SocketErrorEventHandler(object sender, SocketError socketError);
+    public delegate void ConnectEventHandler();
+    public delegate void ReadEventHandler(ushort handlerId, byte[] payload);
+    public delegate void DisconnectEventHandler();
+    public delegate void SocketErrorEventHandler(SocketError socketError);
 
     public event ConnectEventHandler OnConnected;
     public event ReadEventHandler OnRead;
@@ -111,7 +111,7 @@ public class Bootstrap
 
             Trace.WriteLine("Done!");
 
-            OnConnected(this);
+            OnConnected();
             StartReceiveHeader(_readSaea);
         }
     }
@@ -194,7 +194,8 @@ public class Bootstrap
                 return;
             }
 
-            int totalDataLength, handlerId;
+            int totalDataLength;
+            ushort handlerId;
 
             // 헤더 정보가 올바른지 검증
             if (_messageSerializer.CheckHaderValidation(e.Buffer, rt.HeaderOffset, out totalDataLength, out handlerId))
@@ -223,11 +224,7 @@ public class Bootstrap
         }
         else
         {
-            // 데이터를 성공적으로 읽은경우 MessageReceived를 처리하고 다시 Receive operation을 시작한다.
-            object payload = _messageSerializer.Deserialize(rt.TotalData);
-            //Debug.WriteLine("Handler ID:{0}, PayLoad:{1}", rt.HandlerId, payload);
-            Session session = new Session(rt.HandlerId, payload);
-            OnRead(this, payload);
+            OnRead(rt.HandlerId, rt.TotalData);
             StartReceiveHeader(e);
         }
     }
@@ -316,26 +313,21 @@ public class Bootstrap
     }
 
 
-    public void Send(int handlerId, object message)
+    public void Send<T>(ushort handlerId, T message)
     {
         if (_saeaWrite == null)
         {
-            OnSocketError(this, SocketError.NotConnected);
+            OnSocketError(SocketError.NotConnected);
             return;
         }
 
         WriteToken wt = (WriteToken)_saeaWrite.UserToken;
 
-        bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize(handlerId, message));
+        bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize<T>(handlerId, message));
         if (canStartNow)
         {
             StartSend(_saeaWrite, wt.NextBufferSizeToSend);
         }
-    }
-
-    public void Send(object message)
-    {
-        this.Send(0, message);
     }
 
     /// <summary>
@@ -349,10 +341,10 @@ public class Bootstrap
         case SocketError.ConnectionReset: // 원격지 연결이 종료된 경우
         case SocketError.ConnectionAborted:
         case SocketError.ConnectionRefused:
-            OnDisconnected(this);
+            OnDisconnected();
             break;
         default:
-            OnSocketError(this, e.SocketError);
+            OnSocketError(e.SocketError);
             break;
         }
     }
