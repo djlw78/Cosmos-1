@@ -47,12 +47,26 @@ public class Session
         }
     }
 
-
     public byte[] Payload
     {
         get
         {
             return _payload;
+        }
+    }
+
+    public bool Connected
+    {
+        get
+        {
+            if (_saeaWrite.AcceptSocket == null)
+            {
+                return false;
+            }
+            else
+            {
+                return !(_saeaWrite.AcceptSocket.Poll(3000, SelectMode.SelectRead) && _saeaWrite.AcceptSocket.Available == 0);
+            }
         }
     }
     public void Write(int handlerId, TBase message)

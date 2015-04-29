@@ -136,9 +136,7 @@ public class Bootstrap
         _listenSocket.Bind(this._setting.LocalEndPoint);
         _listenSocket.Listen(this._setting.BackLog);
 
-        Trace.WriteLine("Socket is listening on " + this._setting.LocalEndPoint.ToString(), "[INFO]");
-
-        Debug.WriteLine("Start accepting...", "[DEBUG]");
+        Trace.WriteLine("Socket is listening on " + this._setting.LocalEndPoint.ToString(), "[INFO]");        
         StartAccept();
 
         MessageWriter.OnWriteTo += OnWriteTo;
@@ -151,6 +149,8 @@ public class Bootstrap
     /// </summary>
     private void StartAccept()
     {
+        Debug.WriteLine("Start accepting...", "[DEBUG]");
+
         SocketAsyncEventArgs acceptEventArg;
 
         if (_poolAcceptEventArgs.Count > 1)
@@ -175,7 +175,6 @@ public class Bootstrap
 
         Debug.Write("Check max simulatenous connections...", "[DEBUG]");
         _theMaxConnectionsEnforcer.WaitOne();        // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
-        Debug.WriteLine("OK!");
 
         //커넥션을 받아들이는 동작을 비동기적으로 시작한다.
         bool willRaiseEvent = _listenSocket.AcceptAsync(acceptEventArg);
@@ -223,7 +222,7 @@ public class Bootstrap
         }
 
         StartAccept(); // 새로운 Aceept를 시작한다.
-
+        
         Debug.WriteLine("IN! Current connections:" + Interlocked.Increment(ref _numberOfConnections), "[DEBUG]");
 
         //RW를 위한 SAEA를 Pool 에서 가지고 온다.
@@ -337,7 +336,6 @@ public class Bootstrap
     /// </summary>
     private void ContinueReceiveHeader(SocketAsyncEventArgs e, int bytesRead, int nextBytesToRead)
     {
-
         ReadToken rt = (ReadToken)e.UserToken;
         e.SetBuffer(rt.HeaderOffset + bytesRead, nextBytesToRead);
 
@@ -352,8 +350,7 @@ public class Bootstrap
     /// Receive 처리
     /// </summary>
     private void ProcessReceive(SocketAsyncEventArgs e)
-    {
-       
+    {       
         ReadToken rt = (ReadToken)e.UserToken;
 
         if (e.SocketError != SocketError.Success)
