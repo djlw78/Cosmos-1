@@ -71,6 +71,7 @@ public class Session
     }
     public void Write(int handlerId, TBase message)
     {
+        if (OnWrite == null) return;
         OnWrite(_saeaWrite, handlerId, message);
     }
 
