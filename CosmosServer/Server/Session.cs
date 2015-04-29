@@ -76,6 +76,7 @@ public class Session
 
     public void WriteToAllExcept(int ignoreSessionId, int handlerId, TBase message)
     {
+        if (OnWriteToAllExcept == null) return;
         OnWriteToAllExcept(ignoreSessionId, handlerId, message);
     }
 
@@ -86,6 +87,7 @@ public class Session
     /// <param name="message"></param>
     public void WriteTo(int sessionId, int handlerId, TBase message)
     {
+        if (OnWrite == null) return;
         OnWriteTo(sessionId, handlerId, message);
     }
 }

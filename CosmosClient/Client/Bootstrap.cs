@@ -61,6 +61,12 @@ namespace Cosmos.Client
             Connect(remoteEP);
         }
 
+        public void Disconnect()
+        {
+            _saeaWrite.AcceptSocket.Shutdown(SocketShutdown.Both);
+            _saeaWrite.AcceptSocket.Close();
+        }
+
         public void Connect(IPEndPoint remoteEP)
         {
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
