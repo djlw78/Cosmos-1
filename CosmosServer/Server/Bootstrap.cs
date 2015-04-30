@@ -271,6 +271,7 @@ public class Bootstrap
         _channels.TryRemove(socket.GetHashCode(), out saea);
 
         Session session = new Session(e);
+        session.OnWrite += OnWrite;
         session.OnWriteTo += OnWriteTo;
         session.OnWriteToAllExcept += OnWriteToAllExcept;
 
@@ -570,12 +571,14 @@ public class Bootstrap
     private void OnWrite<T>(SocketAsyncEventArgs saeaWrite, int handlerId, T message) where T : TBase
     {
         Debug.WriteLine("OnWrite:HandlerId:" + handlerId +", Payload:" + message,"[DEBUG]");
-        ConcurrentWriteToken wt = (ConcurrentWriteToken)saeaWrite.UserToken;
+        if (saeaWrite.UserToken is ConcurrentWriteToken) { 
+            ConcurrentWriteToken wt = (ConcurrentWriteToken)saeaWrite.UserToken;
 
-        bool canStartNow = wt.AddToSendQueue(ThriftMessageSerializer.Serialize<T>(handlerId, message));
-        if (canStartNow)
-        {
-            StartSend(saeaWrite, wt.NextBufferSizeToSend);
+            bool canStartNow = wt.AddToSendQueue(ThriftMessageSerializer.Serialize<T>(handlerId, message));
+            if (canStartNow)
+            {
+                StartSend(saeaWrite, wt.NextBufferSizeToSend);
+            }
         }
     }
 
