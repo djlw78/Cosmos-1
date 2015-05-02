@@ -309,12 +309,12 @@ public class Bootstrap
         try
         {
             _theMaxConnectionsEnforcer.Release();
+            Debug.WriteLine("OUT! Current connections:" + Interlocked.Decrement(ref _numberOfConnections), "[DEBUG]");
         }
         catch (System.Threading.SemaphoreFullException)
         {
             Trace.TraceWarning("Semaphore Release가 이미 최대치에 도달했는데 호출 되었습니다. 하지만 넘어갑니다.");
-        }
-        Debug.WriteLine("OUT! Current connections:" + Interlocked.Decrement(ref _numberOfConnections), "[DEBUG]");
+        }        
     }
 
     /// <summary>
