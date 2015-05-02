@@ -27,7 +27,7 @@ public class Bootstrap
     #endregion
 
     #region Member variables
-    int _numberOfConnections = 0;
+    int _numberOfConnections = 1;
 
     // the socket used to listen for incoming connection requests
     Socket _listenSocket;
@@ -159,7 +159,7 @@ public class Bootstrap
         }
 
         Debug.Write("Check max simulatenous connections...", "[DEBUG]");
-        _theMaxConnectionsEnforcer.WaitOne();        // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
+        _theMaxConnectionsEnforcer.WaitOne();      // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
 
         //커넥션을 받아들이는 동작을 비동기적으로 시작한다.
         bool willRaiseEvent = _listenSocket.AcceptAsync(acceptEventArg);
@@ -198,17 +198,17 @@ public class Bootstrap
     /// <param name="acceptSocketEventArgs"></param>
     private void ProcessAccept(SocketAsyncEventArgs acceptSocketEventArgs)
     {
+        Debug.WriteLine("IN! Current connections:" + Interlocked.Increment(ref _numberOfConnections), "[DEBUG]");
+
         if (acceptSocketEventArgs.SocketError != SocketError.Success)
         {
-            Debug.WriteLine("Accept failed!.", "[ERROR]");
+            Debug.WriteLine("Accept failed!.", "[ERROR]");            
             StartAccept();
             HandleBadAccept(acceptSocketEventArgs);
             return;
         }
-
-        StartAccept(); // 새로운 Aceept를 시작한다.
         
-        Debug.WriteLine("IN! Current connections:" + Interlocked.Increment(ref _numberOfConnections), "[DEBUG]");
+        StartAccept(); // 새로운 Aceept를 시작한다.
 
         SocketAsyncEventArgs saeaRead;
         //RW를 위한 SAEA를 Pool 에서 가지고 온다.
@@ -276,7 +276,7 @@ public class Bootstrap
         if (socket != null && socket.Connected)
         {
             socket.Shutdown(SocketShutdown.Both);
-            socket.Close();
+            socket.Close();            
         }
 
         if (e.UserToken is ReadToken)
@@ -306,7 +306,14 @@ public class Bootstrap
             return;
         }
 
-        _theMaxConnectionsEnforcer.Release();
+        try
+        {
+            _theMaxConnectionsEnforcer.Release();
+        }
+        catch (System.Threading.SemaphoreFullException)
+        {
+            Trace.TraceWarning("Semaphore Release가 이미 최대치에 도달했는데 호출 되었습니다. 하지만 넘어갑니다.");
+        }
         Debug.WriteLine("OUT! Current connections:" + Interlocked.Decrement(ref _numberOfConnections), "[DEBUG]");
     }
 
@@ -497,6 +504,8 @@ public class Bootstrap
 
         System.Buffer.BlockCopy(wt.BytesToSend, 0, e.Buffer, wt.BufferOffset, bytesToSend); //TODO Exception Handling
         e.SetBuffer(wt.BufferOffset, bytesToSend);
+
+        if (wt.Socket == null) return;
 
         bool willRaiseEvent = wt.Socket.SendAsync(e);
         if (!willRaiseEvent)
