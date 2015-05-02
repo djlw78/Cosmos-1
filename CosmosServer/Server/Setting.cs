@@ -25,8 +25,7 @@ namespace Cosmos.Server
             this._maxSimultaneousAceepts = maxSimultaneousAceepts;
         }
 
-        public Setting(int port
-                        , IPEndPoint endPoint    
+        public Setting(IPEndPoint endPoint    
                         , int backLog, int maxConnections
                         , int receiveBufferSize
                         , int sendBufferSize
