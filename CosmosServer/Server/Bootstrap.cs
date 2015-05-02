@@ -153,25 +153,10 @@ public class Bootstrap
 
         SocketAsyncEventArgs acceptEventArg;
 
-        if (_poolAcceptEventArgs.Count > 1)
+        if (_poolAcceptEventArgs.Pop(out acceptEventArg) == false)
         {
-            try
-            {
-                Debug.WriteLine("Pop accept SAEA from the pool", "[DEBUG]");
-                acceptEventArg = this._poolAcceptEventArgs.Pop();
-            }
-            catch
-            {
-                Debug.WriteLine("Create new accept SAEA - catch", "[DEBUG]");
-                acceptEventArg = CreateSocketAsyncEventArgsForAccept();
-            }
-        }
-        else
-        {
-            Debug.WriteLine("Create new accept SAEA", "[DEBUG]");
             acceptEventArg = CreateSocketAsyncEventArgsForAccept();
         }
-
 
         Debug.Write("Check max simulatenous connections...", "[DEBUG]");
         _theMaxConnectionsEnforcer.WaitOne();        // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
@@ -225,25 +210,36 @@ public class Bootstrap
         
         Debug.WriteLine("IN! Current connections:" + Interlocked.Increment(ref _numberOfConnections), "[DEBUG]");
 
+        SocketAsyncEventArgs saeaRead;
         //RW를 위한 SAEA를 Pool 에서 가지고 온다.
-        SocketAsyncEventArgs saeaRead = this._poolReadEventArgs.Pop();
-        saeaRead.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
-        ReadToken rt = ((ReadToken)saeaRead.UserToken);
+        if (this._poolReadEventArgs.Pop(out saeaRead))
+        {
+            saeaRead.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
+            ReadToken rt = ((ReadToken)saeaRead.UserToken);
 
-        SocketAsyncEventArgs saeaWrite = this._poolWriteEventArgs.Pop();
-        saeaWrite.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
-        rt.WriteSaea = saeaWrite;
+            SocketAsyncEventArgs saeaWrite;
+            if (this._poolWriteEventArgs.Pop(out saeaWrite))
+            {
+                saeaWrite.AcceptSocket = acceptSocketEventArgs.AcceptSocket;
+                rt.WriteSaea = saeaWrite;
 
-        // 채널컨테이너에 새로운 소켓 추가
-        _channels.TryAdd(rt.Socket.GetHashCode(), saeaWrite);
-        OnAccepted(this, saeaRead.AcceptSocket);
+                // 채널컨테이너에 새로운 소켓 추가
+                _channels.TryAdd(rt.Socket.GetHashCode(), saeaWrite);
 
-        // Accept SAEA는 풀에 반환한다.
-        acceptSocketEventArgs.AcceptSocket = null;
-        this._poolAcceptEventArgs.Push(acceptSocketEventArgs);
+                OnAccepted(this, saeaRead.AcceptSocket);
 
-        // Receive 시작
-        StartReceiveHeader(saeaRead);
+                // Accept SAEA는 풀에 반환한다.
+                acceptSocketEventArgs.AcceptSocket = null;
+                this._poolAcceptEventArgs.Push(acceptSocketEventArgs);
+
+                // Receive 시작
+                StartReceiveHeader(saeaRead);
+            }
+            else {
+                this._poolReadEventArgs.Push(saeaRead);
+            }
+        }
+        else { Trace.TraceWarning("Read SAEA를 가지고 오는데 실패"); }        
     }
 
     /// <summary>

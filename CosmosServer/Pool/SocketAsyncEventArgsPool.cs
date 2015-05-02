@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Sockets;
 
@@ -6,33 +7,26 @@ namespace CosmosServer.Pool
 {
     public sealed class SocketAsyncEventArgsPool
     {
-        Stack<SocketAsyncEventArgs> pool;
+        ConcurrentBag<SocketAsyncEventArgs> poolOfSAEA;
 
         public SocketAsyncEventArgsPool(int capacity)
         {
-            this.pool = new Stack<SocketAsyncEventArgs>(capacity);
+            poolOfSAEA = new ConcurrentBag<SocketAsyncEventArgs>();
         }
 
-        public void Push(SocketAsyncEventArgs item)
+        public void Push(SocketAsyncEventArgs saea)
         {
-            if (item == null) { throw new ArgumentNullException("Items added to a SocketAsyncEventArgsPool cannot be null"); }
-            lock (pool)
-            {
-                pool.Push(item);
-            }
+            poolOfSAEA.Add(saea);
         }
 
-        public SocketAsyncEventArgs Pop()
+        public bool Pop(out SocketAsyncEventArgs saea)
         {
-            lock (pool)
-            {
-                return pool.Pop();
-            }
+            return poolOfSAEA.TryTake(out saea);
         }
 
         public int Count
         {
-            get { return pool.Count; }
+            get { return poolOfSAEA.Count;  }
         }
     }
 }
