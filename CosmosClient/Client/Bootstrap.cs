@@ -73,6 +73,7 @@ namespace Cosmos.Client
 
         public void Disconnect()
         {
+            if (_isConnected == false) { return; }
             _isConnected = false;
             _saeaWrite.AcceptSocket.Shutdown(SocketShutdown.Both);
             _saeaWrite.AcceptSocket.Close();
