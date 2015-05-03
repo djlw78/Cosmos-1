@@ -38,6 +38,16 @@ namespace Cosmos.Client
         public event SocketErrorEventHandler OnSocketError;
         #endregion
 
+        private bool _isConnected = false;
+
+        public bool IsConnected
+        {
+            get
+            {
+                return _isConnected;
+            }
+        }
+
         public Bootstrap(Setting setting, IMessageSerializer messageSerializer)
         {
             this._setting = setting;
@@ -63,6 +73,7 @@ namespace Cosmos.Client
 
         public void Disconnect()
         {
+            _isConnected = false;
             _saeaWrite.AcceptSocket.Shutdown(SocketShutdown.Both);
             _saeaWrite.AcceptSocket.Close();
         }
@@ -100,6 +111,23 @@ namespace Cosmos.Client
             }
         }
 
+        /// <summary>
+        /// Socket 끊어졌을 때 처리
+        /// </summary>
+        /// <param name="e"></param>
+        private void CloseSocket(SocketAsyncEventArgs e)
+        {
+            if (e == null || e.AcceptSocket == null) return;
+            Socket socket = e.AcceptSocket;
+            _isConnected = false;
+            OnDisconnected(this);
+
+            if (socket != null && socket.Connected)
+            {
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+            }
+        }
 
         private void ProcessConnect(SocketAsyncEventArgs saeaConnect)
         {
@@ -121,7 +149,7 @@ namespace Cosmos.Client
                 _saeaWrite.UserToken = new WriteToken(_saeaWrite, _setting.WriteBufferSize);
 
                 Trace.WriteLine("Done!");
-
+                _isConnected = true;
                 OnConnected(this);
                 StartReceiveHeader(_readSaea);
             }
@@ -186,8 +214,7 @@ namespace Cosmos.Client
 
             if (e.BytesTransferred == 0)
             {
-                // Receive 했는데 읽어온 데이터가 없으면 연결 종료 한다.
-                //TODO
+                CloseSocket(e);
                 return;
             }
 
@@ -282,8 +309,7 @@ namespace Cosmos.Client
 
             if (e.BytesTransferred == 0)
             {
-                // Send 했는데 보낸 데이터가 없으면 연결 종료 한다.
-                //CloseClientSocket(e);
+                CloseSocket(e);
                 return;
             }
 
@@ -350,7 +376,7 @@ namespace Cosmos.Client
                 case SocketError.ConnectionReset: // 원격지 연결이 종료된 경우
                 case SocketError.ConnectionAborted:
                 case SocketError.ConnectionRefused:
-                    OnDisconnected(this);
+                    CloseSocket(e);
                     break;
                 default:                    
                     OnSocketError(this, e.SocketError);
