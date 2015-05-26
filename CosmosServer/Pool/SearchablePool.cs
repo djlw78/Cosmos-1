@@ -48,7 +48,12 @@ internal abstract class SearchablePool<K, V>
         {
             value = objectInitializer(value);
 
-            if (!objectMap.TryAdd(k, value))
+            if (objectMap.TryAdd(k, value))
+            {
+                v = value;
+                return true;               
+            }
+            else
             {
                 objectPool.Add(value);
                 v = default(V);
@@ -60,9 +65,6 @@ internal abstract class SearchablePool<K, V>
             v = default(V);
             return false;
         }
-
-        v = value;
-        return true;
     }
 
     internal abstract bool Borrow(K k, out V v);
