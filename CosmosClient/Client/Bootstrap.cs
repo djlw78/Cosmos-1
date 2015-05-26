@@ -11,7 +11,6 @@ namespace Cosmos.Client
 {
     public class Bootstrap
     {
-
         #region Immutable construction member variables
 
         readonly Setting _setting;
@@ -30,14 +29,20 @@ namespace Cosmos.Client
         public delegate void ReadEventHandler(ushort handlerId, byte[] payload);
         public delegate void DisconnectEventHandler();
         public delegate void SocketErrorEventHandler(SocketError socketError);
+        public delegate void ConnectTimeoutEventHandler();
 
         public event ConnectEventHandler OnConnected;
         public event ReadEventHandler OnRead;
         public event DisconnectEventHandler OnDisconnected;
         public event SocketErrorEventHandler OnSocketError;
+        public event ConnectTimeoutEventHandler OnConnectTimeout;
         #endregion
 
-        private bool _isConnected = false;
+        ManualResetEvent _connectStartMre;
+        ManualResetEvent _connectFinishMre;
+
+        private volatile bool _isConnected = false;
+        private volatile bool _IsConnectTimeout = false;
 
         public bool IsConnected
         {
@@ -67,7 +72,8 @@ namespace Cosmos.Client
         public void Connect(string host, int port)
         {
             IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(host), port);
-
+            _connectStartMre = new ManualResetEvent(false);
+            _connectFinishMre = new ManualResetEvent(false);
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             SocketAsyncEventArgs saeaConnect = new SocketAsyncEventArgs();
 
@@ -76,35 +82,64 @@ namespace Cosmos.Client
             saeaConnect.UserToken = socket;
 
             bool willRaiseEvent = socket.ConnectAsync(saeaConnect);
+            
             if (!willRaiseEvent)
             {
                 ProcessConnect(saeaConnect);
             }
+            else
+            {
+                bool signalled = _connectStartMre.WaitOne(1000, true);
+                if (!signalled)
+                {
+                    _IsConnectTimeout = true;
+                    Console.WriteLine("Timeout");
+                    CloseConnectingSocket(socket);
+                }
+            }            
         }
 
+        
         public void Disconnect()
         {
             if (_isConnected == false) { return; }
-            CloseSocket(_saeaWrite);
+            CloseConnectedSocket(_saeaWrite);
         }
 
         /// <summary>
-        /// Socket 끊어졌을 때 처리
+        /// Socket 연결을 종료한다.
         /// </summary>
-        /// <param name="e"></param>
-        private void CloseSocket(SocketAsyncEventArgs e)
+        /// <param name="socket"></param>
+        private void CloseSocket(Socket socket)
         {
-            if (e == null || e.AcceptSocket == null) return;
-            Socket socket = e.AcceptSocket;
             _isConnected = false;
-            OnDisconnected();
+
             if (socket != null && socket.Connected)
             {
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Close();
             }
         }
+        /// <summary>
+        /// Connect 중인 Socket을 닫는다. OnConnectTimeout 이벤트를 발동시킨다.
+        /// </summary>
+        /// <param name="socket"></param>
+        private void CloseConnectingSocket(Socket socket)
+        {
+            OnConnectTimeout();
+            CloseSocket(socket);
+        }
 
+        /// <summary>
+        /// Socket 연결을 닫도록 한다. Connect가 완료된 이후의 Close이고, OnDisconnected 이벤트를 발동시킨다.
+        /// </summary>
+        /// <param name="e"></param>
+        private void CloseConnectedSocket(SocketAsyncEventArgs e)
+        {
+            if (e == null || e.AcceptSocket == null) return;
+            OnDisconnected();
+            CloseSocket(e.AcceptSocket);                
+        }
 
         private void IO_Completed(object sender, SocketAsyncEventArgs e)
         {
@@ -124,6 +159,12 @@ namespace Cosmos.Client
 
         private void ProcessConnect(SocketAsyncEventArgs saeaConnect)
         {
+            if (_IsConnectTimeout)
+            {
+                return;
+            }
+
+            _connectStartMre.Set();
             if (saeaConnect.SocketError == SocketError.Success)
             {
                 Trace.Write("Creating 1 SocketEventAsyncArgs for read...", "[INFO]");
