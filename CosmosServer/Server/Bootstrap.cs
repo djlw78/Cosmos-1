@@ -160,7 +160,7 @@ namespace Cosmos.Server
             }
 
             Debug.Write("Check max simulatenous connections... ", "[DEBUG]");
-            _theMaxConnectionsEnforcer.WaitOne()        // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
+            _theMaxConnectionsEnforcer.WaitOne();    // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
             Debug.WriteLine("OK!");
 
             //커넥션을 받아들이는 동작을 비동기적으로 시작한다.
