@@ -1,16 +1,18 @@
 ﻿using Cosmos.Server;
+using System;
 using System.Net.Sockets;
 
 namespace Cosmos.Pool
 {
 internal class DefaultSaeaPool : DefaultPool<SocketAsyncEventArgs>
 {
-    internal DefaultSaeaPool(int numberOfObjects, Setting setting)
+    internal DefaultSaeaPool(int numberOfObjects, Setting setting, EventHandler<SocketAsyncEventArgs> eventHandler)
     : base(numberOfObjects)
     {
         base.Initialize(() =>
         {
             SocketAsyncEventArgs saea = new SocketAsyncEventArgs();
+            saea.Completed += eventHandler;
             return saea;
         });
     }
