@@ -1,21 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Cosmos.Codec
 {
-public abstract class BaseMessageSerializer : IMessageSerializer
+public abstract class BaseMessageSerializer
 {
-    const int _MESSAGE_HEADER_SIZE = sizeof(UInt32) + sizeof(UInt16);
-
-    /// <summary>
-    /// 헤더 크기를 가지고 온다.
-    /// </summary>
-    /// <returns></returns>
-    public int GetHeaderSize()
-    {
-        return _MESSAGE_HEADER_SIZE;
-    }
+    public const int _MESSAGE_HEADER_SIZE = sizeof(UInt32) + sizeof(UInt16);
 
     protected byte[] Serialize(ushort handlerId, byte[] payload)
     {
@@ -30,6 +19,7 @@ public abstract class BaseMessageSerializer : IMessageSerializer
 
         return totalMessage;
     }
+
 
     /// <summary>
     /// 헤더 사이즈가 맞는지 검증한다.
@@ -61,7 +51,7 @@ public abstract class BaseMessageSerializer : IMessageSerializer
         }
     }
 
-
     public abstract byte[] Serialize<T>(ushort handlerId, T message);
+    public abstract T Deserialize<T>(byte[] data);
 }
 }
