@@ -38,8 +38,7 @@ namespace Cosmos.Client
         public event ConnectTimeoutEventHandler OnConnectTimeout;
         #endregion
 
-        ManualResetEvent _connectStartMre;
-        ManualResetEvent _connectFinishMre;
+        ManualResetEvent _connectResetEvent;
 
         private volatile bool _isConnected = false;
         private volatile bool _IsConnectTimeout = false;
@@ -72,8 +71,7 @@ namespace Cosmos.Client
         public void Connect(string host, int port)
         {
             IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(host), port);
-            _connectStartMre = new ManualResetEvent(false);
-            _connectFinishMre = new ManualResetEvent(false);
+            _connectResetEvent = new ManualResetEvent(false);
             Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             SocketAsyncEventArgs saeaConnect = new SocketAsyncEventArgs();
 
@@ -89,7 +87,7 @@ namespace Cosmos.Client
             }
             else
             {
-                bool signalled = _connectStartMre.WaitOne(1000, true);
+                bool signalled = _connectResetEvent.WaitOne(1000, true);
                 if (!signalled)
                 {
                     _IsConnectTimeout = true;
@@ -164,7 +162,7 @@ namespace Cosmos.Client
                 return;
             }
 
-            _connectStartMre.Set();
+            _connectResetEvent.Set();
             if (saeaConnect.SocketError == SocketError.Success)
             {
                 Trace.Write("Creating 1 SocketEventAsyncArgs for read...", "[INFO]");
