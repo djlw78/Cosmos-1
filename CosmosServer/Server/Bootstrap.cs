@@ -26,7 +26,7 @@ namespace Cosmos.Server
         #endregion
 
         #region Member variables
-        int _numberOfConnections = 0;
+        int _numberOfConnections = 0; //제일 첫번 째 Accept
 
         // the socket used to listen for incoming connection requests
         Socket _listenSocket;
@@ -66,7 +66,7 @@ namespace Cosmos.Server
             this._readBufferManager = new BufferManager(setting.ReceiveBufferSize, setting.MaxConnections, BaseMessageSerializer._MESSAGE_HEADER_SIZE);
             this._writeBufferManager = new BufferManager(setting.SendBufferSize, setting.MaxConnections, 0);
 
-            this._theMaxConnectionsEnforcer = new Semaphore(setting.MaxConnections + 1, setting.MaxConnections + 1);
+            this._theMaxConnectionsEnforcer = new Semaphore(setting.MaxConnections, setting.MaxConnections);
             Init();
         }
 
@@ -117,7 +117,7 @@ namespace Cosmos.Server
         {
             _listenSocket = new Socket(this._setting.LocalEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _listenSocket.Bind(this._setting.LocalEndPoint);
-            _listenSocket.Listen(this._setting.BackLog);
+            _listenSocket.Listen(this._setting.BackLog);            
 
             Trace.WriteLine("Socket is listening on " + this._setting.LocalEndPoint.ToString(), "[INFO]");
 
@@ -151,7 +151,7 @@ namespace Cosmos.Server
 
             if (this._poolAcceptEventArgs.Borrow(out acceptEventArg))
             {
-                Debug.WriteLine("Pop accept SAEA from the pool", "[DEBUG]");
+                Debug.WriteLine("Pop accept SAEA from the pool id:" + acceptEventArg.GetHashCode(), "[DEBUG]");
             }
             else
             {
@@ -159,13 +159,13 @@ namespace Cosmos.Server
                 return;
             }
 
-            Debug.Write("Check max simulatenous connections...", "[DEBUG]");
-            _theMaxConnectionsEnforcer.WaitOne();        // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
+            Debug.Write("Check max simulatenous connections... ", "[DEBUG]");
+            _theMaxConnectionsEnforcer.WaitOne()        // 최대 동시 접속자를 제한 하기 위한 Semaphore 최대에 도달한 경우 쓰레드를 블럭하고 Release가 호출될 때 까지 기다린다.
             Debug.WriteLine("OK!");
 
             //커넥션을 받아들이는 동작을 비동기적으로 시작한다.
             bool willRaiseEvent = _listenSocket.AcceptAsync(acceptEventArg);
-
+           
             // I/O operation이 동기적으로 수행되었을 경우에 false를 리턴하고 ProcessAccept를 직접 호출해줘야 한다. 비동기로 완료되었으면 내부적으로 ProcessAccept를 호출한다.
             if (!willRaiseEvent)
             {
@@ -182,9 +182,7 @@ namespace Cosmos.Server
                 HandleBadAccept(acceptSocketEventArgs);
                 return;
             }
-
             StartAccept(); // 새로운 Aceept를 시작한다.
-
             Debug.WriteLine("IN! Current connections:" + Interlocked.Increment(ref _numberOfConnections), "[DEBUG]");
 
             int socketId = acceptSocketEventArgs.AcceptSocket.GetHashCode();
@@ -202,7 +200,6 @@ namespace Cosmos.Server
                     rt.WriteSaea = saeaWrite;
 
                     OnAccepted(saeaRead.AcceptSocket);
-
                     // Receive 시작
                     StartReceiveHeader(saeaRead);
                 }
@@ -213,10 +210,16 @@ namespace Cosmos.Server
                     _poolReadEventArgs.Return(socketId);
                 }
             }
+            else
+            {
+                Trace.TraceWarning("Failed to borrow");
+            }
 
             // Accept SAEA는 풀에 반환한다.
             acceptSocketEventArgs.AcceptSocket = null;
             _poolAcceptEventArgs.Return(acceptSocketEventArgs);
+
+            
         }
 
         private void StartReceiveHeader(SocketAsyncEventArgs saeaRead)
