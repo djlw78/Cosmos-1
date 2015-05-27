@@ -30,6 +30,20 @@ namespace Cosmos.Server
             this._maxSimultaneousAceepts = maxSimultaneousAceepts;
         }
 
+        public Setting(IPEndPoint endPoint
+                        , int backLog, int maxConnections
+                        , int receiveBufferSize
+                        , int sendBufferSize
+                        , int maxSimultaneousAceepts)
+        {
+            this._localEndPoint = endPoint;
+            this._backLog = backLog;
+            this._maxConnections = maxConnections;
+            this._receiveBufferSize = receiveBufferSize;
+            this._sendBufferSize = sendBufferSize;
+            this._maxSimultaneousAceepts = maxSimultaneousAceepts;
+        }
+
         public IPEndPoint LocalEndPoint
         {
             get
