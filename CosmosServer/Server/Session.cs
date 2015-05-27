@@ -56,16 +56,19 @@ public class Session
 
     public void Write(byte[] payload)
     {
+        if (OnWrite == null) return;
         OnWrite(_saeaWrite, payload);
     }
 
     public void WriteToAllExceptSelf(byte[] payload)
     {
+        if (OnWriteToAllExcept == null) return;
         WriteToAllExcept(SessionId, payload);
     }
 
     public void WriteToAllExcept(int ignoreSessionId, byte[] payload)
     {
+        if (OnWriteToAllExcept == null) return;
         OnWriteToAllExcept(ignoreSessionId, payload);
     }
 
@@ -76,6 +79,7 @@ public class Session
     /// <param name="message"></param>
     public void WriteTo(int sessionId, byte[] payload)
     {
+        if (OnWriteTo == null) return;
         OnWriteTo(sessionId, payload);
     }
 
