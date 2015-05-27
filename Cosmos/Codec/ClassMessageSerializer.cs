@@ -23,7 +23,7 @@ public sealed class ClassMessageSerializer : BaseMessageSerializer
         }
     }
 
-    public override T Deserialize<T>(byte[] data)
+    public T Deserialize<T>(byte[] data)
     {
         try
         {

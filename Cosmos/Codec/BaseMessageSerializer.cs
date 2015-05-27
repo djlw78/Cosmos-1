@@ -35,7 +35,7 @@ public abstract class BaseMessageSerializer
         {
             // 메세지 헤더인 경우 헤더를 해석해서 BodySize와 HandlerId를 얻는다.
             _totalDataLength = BitConverter.ToInt32(_header, offset);
-            _handlerId = BitConverter.ToUInt16(_header, offset + sizeof(UInt16));
+            _handlerId = BitConverter.ToUInt16(_header, offset + sizeof(int));
 
             // 데이터 길이가 1보다 작거나(0포함) Int16.MaxValue 보다 큰 경우는 valid 하지 않다고 판단.
             if (_totalDataLength < 1 && _totalDataLength > UInt16.MaxValue)
@@ -52,6 +52,6 @@ public abstract class BaseMessageSerializer
     }
 
     public abstract byte[] Serialize<T>(ushort handlerId, T message);
-    public abstract T Deserialize<T>(byte[] data);
+    //public abstract object Deserialize<T>(byte[] data) where T : new();
 }
 }

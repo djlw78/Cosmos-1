@@ -78,5 +78,20 @@ public class Session
     {
         OnWriteTo(sessionId, handlerId, message);
     }
+
+    public bool Connected
+    {
+        get
+        {
+            if (_saeaWrite.AcceptSocket == null)
+            {
+                return false;
+            }
+            else
+            {
+                return !(_saeaWrite.AcceptSocket.Poll(3000, SelectMode.SelectRead) && _saeaWrite.AcceptSocket.Available == 0);
+            }
+        }
+    }
 }
 }
