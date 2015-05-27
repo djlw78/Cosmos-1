@@ -401,7 +401,7 @@ namespace Cosmos.Client
         }
 
 
-        public void Send<T>(ushort handlerId, T message)
+        public void Send(byte[] bytesToSend)
         {
             if (_saeaWrite == null)
             {
@@ -410,8 +410,7 @@ namespace Cosmos.Client
             }
 
             WriteToken wt = (WriteToken)_saeaWrite.UserToken;
-
-            bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize<T>(handlerId, message));
+            bool canStartNow = wt.AddToSendQueue(bytesToSend);
             if (canStartNow)
             {
                 StartSend(_saeaWrite, wt.NextBufferSizeToSend);

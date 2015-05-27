@@ -483,38 +483,37 @@ namespace Cosmos.Server
             }
         }
 
-        private void OnWrite<T>(SocketAsyncEventArgs saeaWrite, ushort handlerId, T message)
+        private void OnWrite(SocketAsyncEventArgs saeaWrite, byte[] payload)
         {
-            Debug.WriteLine("OnWrite:HandlerId:" + handlerId + ", Payload:" + message, "[DEBUG]");
             WriteToken wt = (WriteToken)saeaWrite.UserToken;
 
-            bool canStartNow = wt.AddToSendQueue(_messageSerializer.Serialize<T>(handlerId, message));
+            bool canStartNow = wt.AddToSendQueue(payload);
             if (canStartNow)
             {
                 StartSend(saeaWrite, wt.NextBufferSizeToSend);
             }
         }
 
-        private void OnWriteTo<T>(int sessionId, ushort handlerId, T message)
+        private void OnWriteTo(int sessionId, byte[] payload)
         {
             SocketAsyncEventArgs saea;
             if (_poolWriteEventArgs.GetBorrowingObject(sessionId, out saea))
             {
-                OnWrite(saea, handlerId, message);
+                OnWrite(saea, payload);
             }
         }
 
-        private void OnWriteToAll<T>(ushort handlerId, T message)
+        private void OnWriteToAll(byte[] payload)
         {
             IEnumerator<SocketAsyncEventArgs> enumerator = _poolWriteEventArgs.GetBorrowingObjects();
             while (enumerator.MoveNext())
             {
                 SocketAsyncEventArgs s = enumerator.Current;
-                OnWrite<T>(s, handlerId, message);
+                OnWrite(s, payload);
             }
         }
 
-        private void OnWriteToAllExcept<T>(int ignoreSessionId, ushort handlerId, T message)
+        private void OnWriteToAllExcept(int ignoreSessionId, byte[] payload)
         {
             IEnumerator<SocketAsyncEventArgs> enumerator = _poolWriteEventArgs.GetBorrowingObjects();
             while (enumerator.MoveNext())
@@ -522,7 +521,7 @@ namespace Cosmos.Server
                 SocketAsyncEventArgs s = enumerator.Current;
                 if (s.AcceptSocket.GetHashCode().Equals(ignoreSessionId) == false)
                 {
-                    OnWrite<T>(s, handlerId, message);
+                    OnWrite(s, payload);
                 }
             }
         }

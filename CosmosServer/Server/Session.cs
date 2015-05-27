@@ -8,13 +8,13 @@ public class Session
     int _handlerId;
     byte[] _payload;
 
-    public delegate void MessageWriteEventHandler( SocketAsyncEventArgs saeaWrite, ushort handlerId, object message);
+    public delegate void MessageWriteEventHandler(SocketAsyncEventArgs saeaWrite, byte[] payload);
     public event MessageWriteEventHandler OnWrite;
 
-    public delegate void MessageWriteToAllEventHandler(int ignoreSessionId, ushort handlerId, object message);
+    public delegate void MessageWriteToAllEventHandler(int ignoreSessionId, byte[] payload);
     public event MessageWriteToAllEventHandler OnWriteToAllExcept;
 
-    public delegate void MessageWriteToEventHandler(int sessionId, ushort handlerId, object message);
+    public delegate void MessageWriteToEventHandler(int sessionId, byte[] payload);
     public event MessageWriteToEventHandler OnWriteTo;
 
     public Session(SocketAsyncEventArgs saeaWrite, ushort handlerId, byte[] payload)
@@ -54,19 +54,19 @@ public class Session
         }
     }
 
-    public void Write<T>(ushort handlerId, T message)
+    public void Write(byte[] payload)
     {
-        OnWrite(_saeaWrite, handlerId, message);
+        OnWrite(_saeaWrite, payload);
     }
 
-    public void WriteToAllExceptSelf<T>(ushort handlerId, T message)
+    public void WriteToAllExceptSelf(byte[] payload)
     {
-        WriteToAllExcept(SessionId, handlerId, message);
+        WriteToAllExcept(SessionId, payload);
     }
 
-    public void WriteToAllExcept(int ignoreSessionId, ushort handlerId, object message)
+    public void WriteToAllExcept(int ignoreSessionId, byte[] payload)
     {
-        OnWriteToAllExcept(ignoreSessionId, handlerId, message);
+        OnWriteToAllExcept(ignoreSessionId, payload);
     }
 
     /// <summary>
@@ -74,9 +74,9 @@ public class Session
     /// </summary>
     /// <param name="sessionId"></param>
     /// <param name="message"></param>
-    public void WriteTo(int sessionId, ushort handlerId, object message)
+    public void WriteTo(int sessionId, byte[] payload)
     {
-        OnWriteTo(sessionId, handlerId, message);
+        OnWriteTo(sessionId, payload);
     }
 
     public bool Connected

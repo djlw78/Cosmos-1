@@ -8,20 +8,20 @@ namespace Cosmos.Server
 {
 public static class MessageWriter
 {
-    internal delegate void MessageWriteToEventHandler(int sessionId, ushort handlerId, object message);
+    internal delegate void MessageWriteToEventHandler(int sessionId, byte[] payload);
     internal static event MessageWriteToEventHandler OnWriteTo;
 
-    internal delegate void MessageWriteToAllEventHandler(ushort handlerId, object message);
+    internal delegate void MessageWriteToAllEventHandler(byte[] payload);
     internal static event MessageWriteToAllEventHandler OnWriteToAll;
 
-    public static void WriteTo<T>(int sessionId, ushort handlerId, T message)
+    public static void WriteTo(int sessionId, byte[] payload)
     {
-        OnWriteTo(sessionId, handlerId, message);
+        OnWriteTo(sessionId, payload);
     }
 
-    public static void WriteToAll<T>(ushort handlerId, T message)
+    public static void WriteToAll(byte[] payload)
     {
-        OnWriteToAll(handlerId, message);
+        OnWriteToAll(payload);
     }
 }
 }
