@@ -87,11 +87,10 @@ namespace Cosmos.Client
             }
             else
             {
-                bool signalled = _connectResetEvent.WaitOne(1000, true);
+                bool signalled = _connectResetEvent.WaitOne(_setting.ConnectionTimeoutInMilliSeconds, true);
                 if (!signalled)
                 {
                     _IsConnectTimeout = true;
-                    Console.WriteLine("Timeout");
                     CloseConnectingSocket(socket);
                 }
             }            
