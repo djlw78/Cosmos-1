@@ -97,6 +97,23 @@ namespace Cosmos.Client
             }            
         }
 
+        public void Connect(IPEndPoint remoteEP)
+        {
+            Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            SocketAsyncEventArgs saeaConnect = new SocketAsyncEventArgs();
+
+            saeaConnect.RemoteEndPoint = remoteEP;
+            saeaConnect.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+            saeaConnect.UserToken = socket;
+
+            bool willRaiseEvent = socket.ConnectAsync(saeaConnect);
+
+            if (!willRaiseEvent)
+            {
+                ProcessConnect(saeaConnect);
+            }
+        }
+
         
         public void Disconnect()
         {
