@@ -31,15 +31,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Pool\SocketAsyncEventArgsPool.cs" />
+    <Compile Include="Pool\DefaultPool.cs" />
+    <Compile Include="Pool\DefaultSaeaPool.cs" />
+    <Compile Include="Pool\SearchablePool.cs" />
+    <Compile Include="Pool\SearchableSaeaPool.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server\Bootstrap.cs" />
     <Compile Include="Server\MessageWriter.cs" />

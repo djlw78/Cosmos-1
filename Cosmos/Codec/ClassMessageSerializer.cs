@@ -4,7 +4,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Cosmos.Codec
 {
-public class ClassMessageSerializer : BaseMessageSerializer
+public sealed class ClassMessageSerializer : BaseMessageSerializer
 {
     public override byte[] Serialize<T>(ushort handlerId, T message)
     {
@@ -31,7 +31,7 @@ public class ClassMessageSerializer : BaseMessageSerializer
             ms.Write(data, 0, data.Length);
             ms.Position = 0;
             BinaryFormatter formatter = new BinaryFormatter();
-            return (T) formatter.Deserialize(ms);
+            return (T)formatter.Deserialize(ms);
         }
         catch (Exception)
         {
