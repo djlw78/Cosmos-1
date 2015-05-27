@@ -90,8 +90,7 @@ namespace Cosmos.Client
                 bool signalled = _connectResetEvent.WaitOne(_setting.ConnectionTimeoutInMilliSeconds, true);
                 if (!signalled)
                 {
-                    _IsConnectTimeout = true;
-                    CloseConnectingSocket(socket);
+                    CloseSocket(true, socket);
                 }
             }            
         }
@@ -117,43 +116,52 @@ namespace Cosmos.Client
         public void Disconnect()
         {
             if (_isConnected == false) { return; }
-            CloseConnectedSocket(_saeaWrite);
+            if (_saeaWrite == null || _saeaWrite.AcceptSocket == null) return;
+            CloseSocket(false, _saeaWrite.AcceptSocket);
         }
 
         /// <summary>
         /// Socket 연결을 종료한다.
         /// </summary>
         /// <param name="socket"></param>
-        private void CloseSocket(Socket socket)
+        private void CloseSocket(bool timeout, Socket socket)
         {
             _isConnected = false;
 
+            if (timeout)
+            {
+                OnConnectTimeout();
+            }
+            else
+            {
+                OnDisconnected();
+            }
             if (socket != null && socket.Connected)
             {
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Close();
             }
         }
-        /// <summary>
-        /// Connect 중인 Socket을 닫는다. OnConnectTimeout 이벤트를 발동시킨다.
-        /// </summary>
-        /// <param name="socket"></param>
-        private void CloseConnectingSocket(Socket socket)
-        {
-            OnConnectTimeout();
-            CloseSocket(socket);
-        }
+        ///// <summary>
+        ///// Connect 중인 Socket을 닫는다. OnConnectTimeout 이벤트를 발동시킨다.
+        ///// </summary>
+        ///// <param name="socket"></param>
+        //private void CloseConnectingSocket(bool timeout, Socket socket)
+        //{
+            
+        //    CloseSocket(socket);
+        //}
 
-        /// <summary>
-        /// Socket 연결을 닫도록 한다. Connect가 완료된 이후의 Close이고, OnDisconnected 이벤트를 발동시킨다.
-        /// </summary>
-        /// <param name="e"></param>
-        private void CloseConnectedSocket(SocketAsyncEventArgs e)
-        {
-            if (e == null || e.AcceptSocket == null) return;
-            OnDisconnected();
-            CloseSocket(e.AcceptSocket);                
-        }
+        ///// <summary>
+        ///// Socket 연결을 닫도록 한다. Connect가 완료된 이후의 Close이고, OnDisconnected 이벤트를 발동시킨다.
+        ///// </summary>
+        ///// <param name="e"></param>
+        //private void CloseConnectedSocket(SocketAsyncEventArgs e)
+        //{
+        //    if (e == null || e.AcceptSocket == null) return;
+            
+        //    CloseSocket(e.AcceptSocket);                
+        //}
 
         private void IO_Completed(object sender, SocketAsyncEventArgs e)
         {
