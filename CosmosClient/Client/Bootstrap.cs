@@ -164,6 +164,7 @@ namespace Cosmos.Client
             }
             else
             {
+                CloseSocket(true, socket);
                 OnSocketError(saeaConnect.SocketError);
             }
         }
