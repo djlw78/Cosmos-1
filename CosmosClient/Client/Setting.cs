@@ -5,13 +5,11 @@ namespace Cosmos.Client
     {
         readonly int _readBufferSize;
         readonly int _writeBufferSize;
-        readonly int _connectionTimeoutInMilliSeconds;
 
-        public Setting(int readBufferSize, int writeBufferSize, int connectionTimeoutInMilliSeconds)
+        public Setting(int readBufferSize, int writeBufferSize)
         {
             _readBufferSize = readBufferSize;
             _writeBufferSize = writeBufferSize;
-            _connectionTimeoutInMilliSeconds = connectionTimeoutInMilliSeconds;
         }
 
         public int ReadBufferSize
@@ -27,14 +25,6 @@ namespace Cosmos.Client
             get
             {
                 return _writeBufferSize;
-            }
-        }
-
-        public int ConnectionTimeoutInMilliSeconds
-        {
-            get
-            {
-                return _connectionTimeoutInMilliSeconds;
             }
         }
     }

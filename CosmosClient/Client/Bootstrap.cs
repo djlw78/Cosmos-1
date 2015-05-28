@@ -29,20 +29,16 @@ namespace Cosmos.Client
         public delegate void ReadEventHandler(ushort handlerId, byte[] payload);
         public delegate void DisconnectEventHandler();
         public delegate void SocketErrorEventHandler(SocketError socketError);
-        public delegate void ConnectTimeoutEventHandler();
+        public delegate void ConnectFailedEventHandler();
 
         public event ConnectEventHandler OnConnected;
         public event ReadEventHandler OnRead;
         public event DisconnectEventHandler OnDisconnected;
         public event SocketErrorEventHandler OnSocketError;
-        public event ConnectTimeoutEventHandler OnConnectTimeout;
+        public event ConnectFailedEventHandler OnConnectFailed;
         #endregion
 
-        ManualResetEvent _connectResetEvent;
-
         private volatile bool _isConnected = false;
-        private volatile bool _IsConnectTimeout = false;
-
         public bool IsConnected
         {
             get
@@ -71,28 +67,7 @@ namespace Cosmos.Client
         public void Connect(string host, int port)
         {
             IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(host), port);
-            _connectResetEvent = new ManualResetEvent(false);
-            Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            SocketAsyncEventArgs saeaConnect = new SocketAsyncEventArgs();
-
-            saeaConnect.RemoteEndPoint = remoteEP;
-            saeaConnect.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-            saeaConnect.UserToken = socket;
-
-            bool willRaiseEvent = socket.ConnectAsync(saeaConnect);
-            
-            if (!willRaiseEvent)
-            {
-                ProcessConnect(saeaConnect);
-            }
-            else
-            {
-                bool signalled = _connectResetEvent.WaitOne(_setting.ConnectionTimeoutInMilliSeconds, true);
-                if (!signalled)
-                {
-                    CloseSocket(true, socket);
-                }
-            }            
+            Connect(remoteEP);                
         }
 
         public void Connect(IPEndPoint remoteEP)
@@ -109,10 +84,9 @@ namespace Cosmos.Client
             if (!willRaiseEvent)
             {
                 ProcessConnect(saeaConnect);
-            }
+            }         
         }
 
-        
         public void Disconnect()
         {
             if (_isConnected == false) { return; }
@@ -124,13 +98,13 @@ namespace Cosmos.Client
         /// Socket 연결을 종료한다.
         /// </summary>
         /// <param name="socket"></param>
-        private void CloseSocket(bool timeout, Socket socket)
+        private void CloseSocket(bool connectFailed, Socket socket)
         {
             _isConnected = false;
 
-            if (timeout)
+            if (connectFailed)
             {
-                OnConnectTimeout();
+                OnConnectFailed();
             }
             else
             {
@@ -142,26 +116,6 @@ namespace Cosmos.Client
                 socket.Close();
             }
         }
-        ///// <summary>
-        ///// Connect 중인 Socket을 닫는다. OnConnectTimeout 이벤트를 발동시킨다.
-        ///// </summary>
-        ///// <param name="socket"></param>
-        //private void CloseConnectingSocket(bool timeout, Socket socket)
-        //{
-            
-        //    CloseSocket(socket);
-        //}
-
-        ///// <summary>
-        ///// Socket 연결을 닫도록 한다. Connect가 완료된 이후의 Close이고, OnDisconnected 이벤트를 발동시킨다.
-        ///// </summary>
-        ///// <param name="e"></param>
-        //private void CloseConnectedSocket(SocketAsyncEventArgs e)
-        //{
-        //    if (e == null || e.AcceptSocket == null) return;
-            
-        //    CloseSocket(e.AcceptSocket);                
-        //}
 
         private void IO_Completed(object sender, SocketAsyncEventArgs e)
         {
@@ -181,12 +135,7 @@ namespace Cosmos.Client
 
         private void ProcessConnect(SocketAsyncEventArgs saeaConnect)
         {
-            if (_IsConnectTimeout)
-            {
-                return;
-            }
-
-            _connectResetEvent.Set();
+            Socket socket = (Socket)saeaConnect.UserToken;
             if (saeaConnect.SocketError == SocketError.Success)
             {
                 Trace.Write("Creating 1 SocketEventAsyncArgs for read...", "[INFO]");
@@ -208,6 +157,14 @@ namespace Cosmos.Client
                 _isConnected = true;
                 OnConnected();
                 StartReceiveHeader(_readSaea);
+            }
+            else if(saeaConnect.SocketError == SocketError.TimedOut || saeaConnect.SocketError == SocketError.ConnectionRefused)
+            {        
+                CloseSocket(true, socket);
+            }
+            else
+            {
+                OnSocketError(saeaConnect.SocketError);
             }
         }
 
