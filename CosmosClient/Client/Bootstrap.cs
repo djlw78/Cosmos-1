@@ -66,8 +66,15 @@ namespace Cosmos.Client
 
         public void Connect(string host, int port)
         {
-            IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(host), port);
-            Connect(remoteEP);                
+            try
+            {
+                IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse(host), port);
+                Connect(remoteEP); 
+            }
+            catch (Exception)
+            {
+                OnConnectFailed();
+            }                           
         }
 
         public void Connect(IPEndPoint remoteEP)
