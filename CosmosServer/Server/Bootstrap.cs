@@ -46,7 +46,7 @@ namespace Cosmos.Server
 
         #region Event Handlers
 
-        public delegate void ReadEventHandler(Session session);
+        public delegate void ReadEventHandler(Session session, ushort handlerId, byte[] payload);
         public delegate void AcceptedEventHandler(Socket socket);
         public delegate void ClosedEventHandler(Session session, Socket socket);
         public delegate void SocketErrorEventHandler(SocketError socketError);
@@ -299,11 +299,11 @@ namespace Cosmos.Server
             {
                 // 데이터를 성공적으로 읽은경우 MessageReceived를 처리하고 다시 Receive operation을 시작한다.
                 Debug.WriteLine("Handler ID:{0}", rt.HandlerId);
-                Session session = new Session(rt.WriteSaea, rt.HandlerId, rt.TotalData);
+                Session session = new Session(rt.WriteSaea);
                 session.OnWrite += OnWrite;
                 session.OnWriteTo += OnWriteTo;
                 session.OnWriteToAllExcept += OnWriteToAllExcept;
-                OnRead(session);
+                OnRead(session, rt.HandlerId, rt.TotalData);
                 StartReceiveHeader(saeaRead);
             }
         }
