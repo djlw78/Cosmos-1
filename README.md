@@ -3,121 +3,144 @@ C# socket server and client by using SocketAsyncEventArgs for read and write ope
 
 ## Server example
 ```csharp
-const int port = 8638;
-const int backLog = 100;
-const int maxConnections = 1000;
-const int receiveBufferSize = 512;
-const int sendBufferSize = 512;
-const int acceptSocketAsyncEventArgs = 8;
-
-static ClassMessageSerializer messageSerializer = new ClassMessageSerializer();
-
-static void Main(string[] args)
+class Program
 {
-	Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
-	Setting setting = new Setting(port, backLog, maxConnections, receiveBufferSize, sendBufferSize, acceptSocketAsyncEventArgs);
+    const int port = 8638;
+    const int backLog = 100;
+    const int maxConnections = 1000;
+    const int receiveBufferSize = 512;
+    const int sendBufferSize = 512;
+    const int acceptSocketAsyncEventArgs = 8;
+    static ClassMessageSerializer messageSerializer = new ClassMessageSerializer();
 
-	Bootstrap bootstrap = new Bootstrap(setting, new ClassMessageSerializer());
+    static void Main(string[] args)
+    {
+        Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
+        Setting setting = new Setting(port, backLog, maxConnections, receiveBufferSize, sendBufferSize, acceptSocketAsyncEventArgs);
 
-	bootstrap.OnAccepted += bootstrap_OnAccepted;
-	bootstrap.OnClosed += bootstrap_OnClosed;
-	bootstrap.OnRead += bootstrap_OnRead;
-	bootstrap.OnSocketError += bootstrap_OnSocketError;
+        Bootstrap bootstrap = new Bootstrap(setting, messageSerializer);
 
-	bootstrap.Start();
+        bootstrap.OnAccepted += bootstrap_OnAccepted;
+        bootstrap.OnClosed += bootstrap_OnClosed;
+        bootstrap.OnRead += bootstrap_OnRead;
+        bootstrap.OnSocketError += bootstrap_OnSocketError;
 
-	Trace.WriteLine("Press Ctrl+Z to terminate gracefully the server process...", "[INFO]");
-	ConsoleKeyInfo cki;
+        bootstrap.Start();
 
-	do
-	{
-		cki = Console.ReadKey();
+        Trace.WriteLine("Press Ctrl+Z to terminate gracefully the server process...", "[INFO]");
+        ConsoleKeyInfo cki;
 
-		if ((cki.Modifiers & ConsoleModifiers.Control) != 0)
-		{
-			if (cki.Key == ConsoleKey.Z)
-			{
-				bootstrap.Shutdown();
-				break;
-			}
-		}
-	}
-	while (true);
+        do
+        {
+            cki = Console.ReadKey();
 
-	Trace.WriteLine("Good bye", "[INFO]");
-}
+            if ((cki.Modifiers & ConsoleModifiers.Control) != 0)
+            {
+                if (cki.Key == ConsoleKey.Z)
+                {
+                    bootstrap.Shutdown();
+                    break;
+                }
+            }
+        }
+        while (true);
 
-private static void bootstrap_OnSocketError(System.Net.Sockets.SocketError socketError)
-{
-	Console.WriteLine(socketError.ToString());
-}
+        Trace.WriteLine("Good bye", "[INFO]");
+    }
 
-private static void bootstrap_OnRead(Session session)
-{
-	GreetingMessage greeting = messageSerializer.Deserialize<GreetingMessage>(session.Payload);
-	Console.WriteLine("Name:{0}, Greeting:{1}", greeting.Name, greeting.Greeting);
-	session.Write(1, greeting);
-}
+    private static void bootstrap_OnSocketError(System.Net.Sockets.SocketError socketError)
+    {
+        Console.WriteLine(socketError.ToString());
+    }
 
-private static void bootstrap_OnClosed(Session session, System.Net.Sockets.Socket socket)
-{
-	Console.WriteLine("Disconnected!!" + session.SessionId);
-}
+    private static void bootstrap_OnRead(Session session)
+    {
+        GreetingMessage greeting = messageSerializer.Deserialize<GreetingMessage>(session.Payload);
+        Console.WriteLine("Name:{0}", greeting.Name);
+        session.Write(messageSerializer.Serialize<GreetingMessage>(1, greeting));
+    }
 
-private static void bootstrap_OnAccepted(System.Net.Sockets.Socket socket)
-{
-	Console.WriteLine("Accepted");
+    private static void bootstrap_OnClosed(Session session, System.Net.Sockets.Socket socket)
+    {
+        Console.WriteLine("Disconnected!!" + session.SessionId);
+    }
+
+    private static void bootstrap_OnAccepted(System.Net.Sockets.Socket socket)
+    {
+        Console.WriteLine("Accepted");
+    }
 }
 ```
 
 ## Client example
 ```csharp
-const int READ_BUFFER_SIZE = 512;
-const int WRITE_BUFFER_SIZE = 512;
-
-static Bootstrap bootstrap;
-static ClassMessageSerializer messageSerializer = new ClassMessageSerializer();
-
-static void Main(string[] args)
+class Program
 {
-	Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
-	Setting setting = new Setting(READ_BUFFER_SIZE, WRITE_BUFFER_SIZE);
+    const int READ_BUFFER_SIZE = 512;
+    const int WRITE_BUFFER_SIZE = 512;
 
-	bootstrap = new Bootstrap(setting, new ClassMessageSerializer());
+    static Bootstrap bootstrap;
+    static ClassMessageSerializer messageSerializer = new ClassMessageSerializer();
 
-	bootstrap.OnConnected += bootstrap_OnConnected;
-	bootstrap.OnDisconnected += bootstrap_OnDisconnected;
-	bootstrap.OnRead += bootstrap_OnRead;
-	bootstrap.OnSocketError += bootstrap_OnSocketError;
+    static void Main(string[] args)
+    {
+        Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
+        Setting setting = new Setting(READ_BUFFER_SIZE, WRITE_BUFFER_SIZE);
 
-	bootstrap.Connect("127.0.0.1", 8638);
+        bootstrap = new Bootstrap(setting, new ClassMessageSerializer());
 
-	Console.ReadLine();
+        bootstrap.OnConnected += bootstrap_OnConnected;
+        bootstrap.OnDisconnected += bootstrap_OnDisconnected;
+        bootstrap.OnRead += bootstrap_OnRead;
+        bootstrap.OnSocketError += bootstrap_OnSocketError;
+        bootstrap.OnConnectFailed += bootstrap_OnConnectFailed;
+
+        bootstrap.Connect("127.0.0.1", 8638);
+
+        Console.ReadLine();
+    }
+
+    private static void bootstrap_OnConnected()
+    {
+        Console.WriteLine("OnConnected");
+        GreetingMessage greeting = new GreetingMessage();
+        greeting.Name = Guid.NewGuid().ToString();
+        bootstrap.Send(messageSerializer.Serialize<GreetingMessage>(1, greeting));
+    }
+
+    static void bootstrap_OnConnectFailed()
+    {
+        throw new NotImplementedException();
+    }
+
+    private static void bootstrap_OnRead(ushort handlerId, byte[] payload)
+    {
+        GreetingMessage greeting = messageSerializer.Deserialize<GreetingMessage>(payload);
+        Console.WriteLine("Name:{0}", greeting.Name);
+        bootstrap.Send(messageSerializer.Serialize<GreetingMessage>(1, greeting));
+    }
+
+    private static void bootstrap_OnDisconnected()
+    {
+        Console.WriteLine("OnDisconnected");
+    }
+
+    private static void bootstrap_OnSocketError(System.Net.Sockets.SocketError socketError)
+    {
+        Console.WriteLine("OnSocketError:" + socketError.ToString());
+    }
 }
+```
 
-private static void bootstrap_OnSocketError(System.Net.Sockets.SocketError socketError)
+## Sample Protocol
+```csharp
+[Serializable]
+public class GreetingMessage
 {
-	Console.WriteLine("OnSocketError:" + socketError.ToString());
-}
-
-private static void bootstrap_OnRead(ushort handlerId, byte[] payload)
-{
-	GreetingMessage greeting =  messageSerializer.Deserialize<GreetingMessage>(payload);
-	Console.WriteLine("Name:{0}, Greeting:{1}", greeting.Name, greeting.Greeting);
-	bootstrap.Send<GreetingMessage>(handlerId, greeting);
-}
-
-private static void bootstrap_OnDisconnected()
-{
-	Console.WriteLine("OnDisconnected");
-}
-
-private static void bootstrap_OnConnected()
-{
-	Console.WriteLine("OnConnected");
-	GreetingMessage greeting = new GreetingMessage();
-	greeting.Name = Guid.NewGuid().ToString();
-	greeting.Greeting = "Hi";
-	bootstrap.Send<GreetingMessage>(1, greeting);
+    public string Name
+    {
+        get;
+        set;
+    }
 }
 ```
