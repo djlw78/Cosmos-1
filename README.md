@@ -53,11 +53,11 @@ class Program
         Console.WriteLine(socketError.ToString());
     }
 
-    private static void bootstrap_OnRead(Session session)
+    private static void bootstrap_OnRead(Session session, ushort handlerId, byte[] payload)
     {
-        GreetingMessage greeting = messageSerializer.Deserialize<GreetingMessage>(session.Payload);
+        GreetingMessage greeting = messageSerializer.Deserialize<GreetingMessage>(payload);
         Console.WriteLine("Name:{0}", greeting.Name);
-        session.Write(messageSerializer.Serialize<GreetingMessage>(1, greeting));
+        session.Write(messageSerializer.Serialize<GreetingMessage>(handlerId, greeting));
     }
 
     private static void bootstrap_OnClosed(Session session, System.Net.Sockets.Socket socket)
