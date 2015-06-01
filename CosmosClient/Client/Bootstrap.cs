@@ -165,7 +165,7 @@ namespace Cosmos.Client
                 OnConnected();
                 StartReceiveHeader(_readSaea);
             }
-            else if(saeaConnect.SocketError == SocketError.TimedOut || saeaConnect.SocketError == SocketError.ConnectionRefused)
+            else if(saeaConnect.SocketError == SocketError.TimedOut || saeaConnect.SocketError == SocketError.ConnectionRefused || saeaConnect.SocketError == SocketError.HostNotFound)
             {        
                 CloseSocket(true, socket);
             }
