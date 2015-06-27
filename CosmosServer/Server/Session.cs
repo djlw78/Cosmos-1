@@ -26,6 +26,10 @@ public class Session
     {
         get
         {
+            if (_saeaWrite == null)
+            {
+                return 0;
+            }
             return _saeaWrite.AcceptSocket.GetHashCode();
         }
     }
