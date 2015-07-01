@@ -26,7 +26,7 @@ public class Session
     {
         get
         {
-            if (_saeaWrite == null)
+            if (_saeaWrite == null || _saeaWrite.AcceptSocket == null)
             {
                 return 0;
             }

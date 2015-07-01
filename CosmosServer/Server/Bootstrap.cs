@@ -472,7 +472,10 @@ namespace Cosmos.Server
         {
             Debug.WriteLine("StartSend-BytesToSend:" + bytesToSend, "[DEBUG]");
             WriteToken wt = (WriteToken)saeaWrite.UserToken;
-
+            if (wt.Socket == null)
+            {
+                return;
+            }
             System.Buffer.BlockCopy(wt.BytesToSend, 0, saeaWrite.Buffer, wt.BufferOffset, bytesToSend); //TODO Exception Handling
             saeaWrite.SetBuffer(wt.BufferOffset, bytesToSend);
 
